@@ -1,0 +1,134 @@
+{
+    "version": "1.0",
+    "gameType": "Zeus Cascading Slots",
+    "description": "Default payout rules for Zeus-themed cascading slot game",
+    "symbolPayouts": [
+        {
+            "symbol": 0,
+            "name": "Crown",
+            "type": "premium",
+            "payouts": [
+                { "count": 8, "multiplier": 10, "description": "8-9 symbols" },
+                { "count": 10, "multiplier": 25, "description": "10-11 symbols" },
+                { "count": 12, "multiplier": 50, "description": "12+ symbols" }
+            ]
+        },
+        {
+            "symbol": 1,
+            "name": "Hourglass",
+            "type": "high",
+            "payouts": [
+                { "count": 8, "multiplier": 1.5, "description": "8-9 symbols" },
+                { "count": 10, "multiplier": 2, "description": "10-11 symbols" },
+                { "count": 12, "multiplier": 12, "description": "12+ symbols" }
+            ]
+        },
+        {
+            "symbol": 2,
+            "name": "Ring",
+            "type": "high",
+            "payouts": [
+                { "count": 8, "multiplier": 2, "description": "8-9 symbols" },
+                { "count": 10, "multiplier": 5, "description": "10-11 symbols" },
+                { "count": 12, "multiplier": 15, "description": "12+ symbols" }
+            ]
+        },
+        {
+            "symbol": 3,
+            "name": "Goblet",
+            "type": "high",
+            "payouts": [
+                { "count": 8, "multiplier": 1.5, "description": "8-9 symbols" },
+                { "count": 10, "multiplier": 2, "description": "10-11 symbols" },
+                { "count": 12, "multiplier": 12, "description": "12+ symbols" }
+            ]
+        },
+        {
+            "symbol": 4,
+            "name": "Red Gem",
+            "type": "medium",
+            "payouts": [
+                { "count": 8, "multiplier": 1, "description": "8-9 symbols" },
+                { "count": 10, "multiplier": 1.5, "description": "10-11 symbols" },
+                { "count": 12, "multiplier": 10, "description": "12+ symbols" }
+            ]
+        },
+        {
+            "symbol": 5,
+            "name": "Purple Gem",
+            "type": "medium",
+            "payouts": [
+                { "count": 8, "multiplier": 0.8, "description": "8-9 symbols" },
+                { "count": 10, "multiplier": 1.2, "description": "10-11 symbols" },
+                { "count": 12, "multiplier": 8, "description": "12+ symbols" }
+            ]
+        },
+        {
+            "symbol": 6,
+            "name": "Yellow Gem",
+            "type": "low",
+            "payouts": [
+                { "count": 8, "multiplier": 0.5, "description": "8-9 symbols" },
+                { "count": 10, "multiplier": 1, "description": "10-11 symbols" },
+                { "count": 12, "multiplier": 5, "description": "12+ symbols" }
+            ]
+        },
+        {
+            "symbol": 7,
+            "name": "Green Gem",
+            "type": "low",
+            "payouts": [
+                { "count": 8, "multiplier": 0.4, "description": "8-9 symbols" },
+                { "count": 10, "multiplier": 0.9, "description": "10-11 symbols" },
+                { "count": 12, "multiplier": 4, "description": "12+ symbols" }
+            ]
+        },
+        {
+            "symbol": 8,
+            "name": "Blue Gem",
+            "type": "low",
+            "payouts": [
+                { "count": 8, "multiplier": 0.25, "description": "8-9 symbols" },
+                { "count": 10, "multiplier": 0.75, "description": "10-11 symbols" },
+                { "count": 12, "multiplier": 2, "description": "12+ symbols" }
+            ]
+        }
+    ],
+    "specialSymbols": {
+        "zeus": {
+            "symbol": 9,
+            "name": "Zeus Scatter",
+            "type": "scatter",
+            "description": "Triggers free spins",
+            "payouts": [
+                { "count": 4, "multiplier": 3, "freeSpins": 15, "description": "4 scatters" },
+                { "count": 5, "multiplier": 5, "freeSpins": 15, "description": "5 scatters" },
+                { "count": 6, "multiplier": 100, "freeSpins": 15, "description": "6+ scatters" }
+            ]
+        },
+        "multiplierOrb": {
+            "symbol": 10,
+            "name": "Multiplier Orb",
+            "type": "multiplier",
+            "description": "Accumulates multiplier during free spins",
+            "valueRange": {
+                "min": 2,
+                "max": 21
+            }
+        }
+    },
+    "gameRules": {
+        "minSymbolWinCount": 8,
+        "description": "Minimum symbols required for any win",
+        "winDetection": "count-based",
+        "cascading": true,
+        "freeSpins": {
+            "triggeredBy": "zeus",
+            "retriggerRules": {
+                "count": 3,
+                "additionalSpins": 5,
+                "description": "3+ Zeus during free spins awards 5 more spins"
+            }
+        }
+    }
+}

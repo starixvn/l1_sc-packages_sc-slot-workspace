@@ -1,0 +1,17 @@
+{
+    "compilerOptions": {
+        "rootDir": "./src",
+        "outDir": "./lib",
+        "lib": ["es5", "es6"],
+        "sourceMap": true,
+        "declaration": true,
+        "declarationMap": true,
+        "resolveJsonModule": true,
+        "moduleResolution": "node",
+        "allowJs": true
+    },
+    "exclude": ["tests/", "lib/", "node_modules/", "src/statistics/", "coverage/", "reports/", "examples/", "scripts/"],
+    "watchOptions": {
+        "excludeDirectories": ["lib/*"]
+    }
+}

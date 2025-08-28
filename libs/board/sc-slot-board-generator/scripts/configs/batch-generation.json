@@ -1,0 +1,64 @@
+{
+    "configurations": [
+        {
+            "name": "Standard Balanced",
+            "boardCount": 120,
+            "targetRTP": 0.97,
+            "tolerance": 0.01,
+            "maxRetries": 10,
+            "outputPath": "standard-balanced-120.json",
+            "difficulty": "Medium",
+            "description": "Standard balanced configuration for typical gameplay sessions"
+        },
+        {
+            "name": "High RTP Player Friendly",
+            "boardCount": 100,
+            "targetRTP": 0.98,
+            "tolerance": 0.01,
+            "maxRetries": 15,
+            "outputPath": "high-rtp-98-percent.json",
+            "difficulty": "Easy",
+            "description": "Player-friendly high RTP configuration for promotional events"
+        },
+        {
+            "name": "Conservative House Edge",
+            "boardCount": 150,
+            "targetRTP": 0.95,
+            "tolerance": 0.015,
+            "maxRetries": 12,
+            "outputPath": "conservative-95-percent.json",
+            "difficulty": "Hard",
+            "description": "Conservative configuration with higher house edge and variance"
+        },
+        {
+            "name": "Extended Session",
+            "boardCount": 200,
+            "targetRTP": 0.965,
+            "tolerance": 0.02,
+            "maxRetries": 20,
+            "outputPath": "extended-session-200.json",
+            "difficulty": "Medium",
+            "description": "Extended gameplay session for marathon gaming experiences"
+        },
+        {
+            "name": "Quick Demo",
+            "boardCount": 50,
+            "targetRTP": 0.97,
+            "tolerance": 0.05,
+            "maxRetries": 5,
+            "outputPath": "quick-demo-50.json",
+            "difficulty": "Easy",
+            "description": "Quick demonstration sequence for testing and showcasing"
+        },
+        {
+            "name": "Tournament Mode",
+            "boardCount": 80,
+            "targetRTP": 0.975,
+            "tolerance": 0.015,
+            "maxRetries": 15,
+            "outputPath": "tournament-mode-80.json",
+            "difficulty": "Medium",
+            "description": "Tournament configuration with slightly higher RTP for competitive play"
+        }
+    ]
+}

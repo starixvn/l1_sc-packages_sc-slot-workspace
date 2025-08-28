@@ -1,0 +1,24 @@
+variables:
+    PROJECT_NAME: sc-slot-board-generator
+
+stages:
+    - test
+    - post-test
+    - publish
+
+include:
+    - project: "ci/common-ci"
+      ref: master
+      file: "unit-test/js-unit-test.gitlab-ci.yml"
+    - project: "ci/common-ci"
+      ref: master
+      file: "sonarqube/sonarqube.js-unittest.gitlab-ci.yml"
+    - project: "ci/common-ci"
+      ref: master
+      file: "npm/publish-npm-ts.gitlab-ci.yml"
+
+unit-test-js:
+  artifacts:
+    reports:
+      junit: coverage/*.xml
+      cobertura: coverage/cobertura-coverage.xml
