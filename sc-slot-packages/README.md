@@ -4,6 +4,8 @@
 
 A modern NX monorepo containing slot board libraries for game development. Built with TypeScript, Jest testing, and Prettier formatting.
 
+> **Note**: This documentation uses `nx` commands (requires global installation). If you prefer not to install globally, replace `nx` with `npx nx` in all commands.
+
 ## 📦 Available Libraries
 
 ### 🎰 Board Generator (`@sc-slot-packages/board-generator`)
@@ -19,11 +21,12 @@ Comprehensive slot board generation library featuring:
 ### 📊 Board Statistics (`@sc-slot-packages/board-statistic`)
 **Location:** `libs/board/sc-slot-board-statistic`
 
-Statistics and analysis library for slot boards:
+Statistics and analysis library for slot boards (runs on-the-fly with ts-node):
 - **Cascading Slots**: Generator definitions and configurations
 - **Statistic Calculation**: Analyze board performance and outcomes
 - **Reporting Tools**: Generate comprehensive statistics reports
 - **Runner Utilities**: Execute statistic analysis workflows
+- **Note**: This library executes directly with TypeScript, no compilation needed
 
 ## 🚀 Quick Start
 
@@ -38,44 +41,48 @@ Statistics and analysis library for slot boards:
 git clone <repository-url>
 cd sc-slot-packages
 
+# Install NX CLI globally (recommended)
+npm install -g nx
+
 # Install dependencies
 npm install
 
 # Verify installation
-npx nx show projects
+nx show projects
 ```
 
 ## 🛠️ Development Commands
 
 ### Building Libraries
 ```bash
-# Build all libraries
-npx nx run-many -t build
+# Build all libraries (only builds libraries that require compilation)
+nx run-many -t build
 
-# Build specific library
-npx nx build sc-slot-board-generator
-npx nx build sc-slot-board-statistic
+# Build board generator (compiles to JavaScript)
+nx build sc-slot-board-generator
+
+# Note: sc-slot-board-statistic runs on-the-fly with ts-node, no build needed
 ```
 
 ### Testing
 ```bash
 # Run all tests
-npx nx run-many -t test
+nx run-many -t test
 
 # Test specific library
-npx nx test sc-slot-board-generator
+nx test sc-slot-board-generator
 
 # Run tests with coverage
-npx nx test sc-slot-board-generator --coverage
+nx test sc-slot-board-generator --coverage
 ```
 
 ### Linting
 ```bash
 # Lint all projects
-npx nx run-many -t lint
+nx run-many -t lint
 
 # Lint specific library
-npx nx lint sc-slot-board-generator
+nx lint sc-slot-board-generator
 ```
 
 ### Library-Specific Commands
@@ -83,19 +90,19 @@ npx nx lint sc-slot-board-generator
 #### Board Generator
 ```bash
 # Generate predefined results
-npx nx generate sc-slot-board-generator
+nx generate sc-slot-board-generator
 
 # Batch generation
-npx nx generate:batch sc-slot-board-generator
+nx generate:batch sc-slot-board-generator
 
 # Quick demo generation
-npx nx generate:demo sc-slot-board-generator
+nx generate:demo sc-slot-board-generator
 ```
 
 #### Board Statistics
 ```bash
 # Run cascading slot analysis
-npx nx cascading-slot sc-slot-board-statistic
+nx cascading-slot sc-slot-board-statistic
 ```
 
 ## 📚 Usage Examples
@@ -183,10 +190,10 @@ sc-slot-packages/
 ### Adding a New Library
 ```bash
 # Generate a new library
-npx nx generate @nx/js:library libs/board/my-new-lib
+nx generate @nx/js:library libs/board/my-new-lib
 
 # Or create in different scope
-npx nx generate @nx/js:library libs/utils/my-utility-lib
+nx generate @nx/js:library libs/utils/my-utility-lib
 ```
 
 ### Working with Dependencies
@@ -202,13 +209,13 @@ npm install new-dev-dependency --save-dev
 ### Code Quality
 ```bash
 # Format code with Prettier
-npx nx format
+nx format
 
 # Fix linting issues
-npx nx lint sc-slot-board-generator --fix
+nx lint sc-slot-board-generator --fix
 
 # Type checking
-npx nx typecheck sc-slot-board-generator
+nx typecheck sc-slot-board-generator
 ```
 
 ## 📊 Monitoring & Analysis
@@ -216,19 +223,19 @@ npx nx typecheck sc-slot-board-generator
 ### Dependency Graph
 ```bash
 # View project dependencies
-npx nx graph
+nx graph
 
 # Show specific project details
-npx nx show project sc-slot-board-generator
+nx show project sc-slot-board-generator
 ```
 
 ### Build Analysis
 ```bash
 # Show affected projects
-npx nx affected:graph
+nx affected:graph
 
 # Build only affected projects
-npx nx affected:build
+nx affected:build
 ```
 
 ## 🧪 Testing Strategy
@@ -241,13 +248,13 @@ npx nx affected:build
 ### Running Tests
 ```bash
 # Watch mode for development
-npx nx test sc-slot-board-generator --watch
+nx test sc-slot-board-generator --watch
 
 # Generate coverage report
-npx nx test sc-slot-board-generator --coverage
+nx test sc-slot-board-generator --coverage
 
 # Test specific file
-npx nx test sc-slot-board-generator --testNamePattern="BoardGenerator"
+nx test sc-slot-board-generator --testNamePattern="BoardGenerator"
 ```
 
 ## 📋 Available Scripts
@@ -268,7 +275,7 @@ Each library has its own `package.json` with specific scripts accessible via NX.
 **Build Errors:**
 ```bash
 # Clear NX cache
-npx nx reset
+nx reset
 
 # Reinstall dependencies
 rm -rf node_modules package-lock.json
@@ -278,19 +285,19 @@ npm install
 **Type Errors:**
 ```bash
 # Sync TypeScript project references
-npx nx sync
+nx sync
 
 # Check TypeScript configuration
-npx nx typecheck
+nx typecheck
 ```
 
 **Test Failures:**
 ```bash
 # Run tests with verbose output
-npx nx test --verbose
+nx test --verbose
 
 # Clear Jest cache
-npx nx test --clearCache
+nx test --clearCache
 ```
 
 ## 🚀 Production Deployment
@@ -298,19 +305,19 @@ npx nx test --clearCache
 ### Building for Production
 ```bash
 # Build all libraries for production
-npx nx run-many -t build --configuration=production
+nx run-many -t build --configuration=production
 
 # Build specific library
-npx nx build sc-slot-board-generator --configuration=production
+nx build sc-slot-board-generator --configuration=production
 ```
 
 ### Publishing Libraries
 ```bash
 # Version and release
-npx nx release
+nx release
 
 # Dry run (preview changes)
-npx nx release --dry-run
+nx release --dry-run
 ```
 
 ## 🤝 Contributing
@@ -318,8 +325,8 @@ npx nx release --dry-run
 1. **Clone** the repository
 2. **Create** a feature branch: `git checkout -b feature/amazing-feature`
 3. **Develop** using the workflow above
-4. **Test** your changes: `npx nx affected:test`
-5. **Build** to verify: `npx nx affected:build`
+4. **Test** your changes: `nx affected:test`
+5. **Build** to verify: `nx affected:build`
 6. **Commit** changes: `git commit -m 'Add amazing feature'`
 7. **Push** to branch: `git push origin feature/amazing-feature`
 8. **Create** a Pull Request

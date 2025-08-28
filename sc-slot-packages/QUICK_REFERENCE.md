@@ -1,47 +1,50 @@
 # 🚀 Quick Reference Guide
 
+> **Note**: This guide uses `nx` commands (requires `npm install -g nx`). If you prefer not to install globally, replace `nx` with `npx nx` in all commands.
+
 ## Most Common Commands
 
 ### Daily Development
 ```bash
 # Start development
+npm install -g nx                        # Install NX CLI globally (one-time)
 npm install                              # Install dependencies
-npx nx show projects                     # List all projects
+nx show projects                         # List all projects
 
 # Build and test
-npx nx build sc-slot-board-generator     # Build generator library
-npx nx test sc-slot-board-generator      # Run tests
-npx nx lint sc-slot-board-generator      # Check code quality
+nx build sc-slot-board-generator         # Build generator library
+nx test sc-slot-board-generator          # Run tests
+nx lint sc-slot-board-generator          # Check code quality
 ```
 
 ### Working with Board Generator
 ```bash
 # Core commands
-npx nx build sc-slot-board-generator     # Build the library
-npx nx test sc-slot-board-generator      # Run unit tests
-npx nx generate sc-slot-board-generator  # Generate predefined results
+nx build sc-slot-board-generator         # Build the library
+nx test sc-slot-board-generator          # Run unit tests
+nx generate sc-slot-board-generator      # Generate predefined results
 
 # Specialized generation
-npx nx generate:batch sc-slot-board-generator  # Batch generation
-npx nx generate:demo sc-slot-board-generator   # Quick demo (50 boards)
+nx generate:batch sc-slot-board-generator    # Batch generation
+nx generate:demo sc-slot-board-generator     # Quick demo (50 boards)
 ```
 
 ### Working with Statistics
 ```bash
-# Statistics library
-npx nx build sc-slot-board-statistic      # Build statistics lib
-npx nx cascading-slot sc-slot-board-statistic  # Run analysis
+# Statistics library (runs on-the-fly with ts-node, no build needed)
+nx cascading-slot sc-slot-board-statistic   # Run analysis
+nx lint sc-slot-board-statistic             # Lint code
 ```
 
 ### Workspace Management
 ```bash
 # See what's affected by changes
-npx nx affected:graph                     # Visual graph of affected projects
-npx nx affected:build                     # Build only affected projects
-npx nx affected:test                      # Test only affected projects
+nx affected:graph                        # Visual graph of affected projects
+nx affected:build                        # Build only affected projects
+nx affected:test                         # Test only affected projects
 
 # Clean and reset
-npx nx reset                             # Clear NX cache
+nx reset                                 # Clear NX cache
 npm run clean                            # Clean all builds
 ```
 
@@ -136,24 +139,24 @@ const demoChain = await generateDemoChain();
 ### Build Issues
 ```bash
 # Clear everything and rebuild
-npx nx reset
+nx reset
 rm -rf node_modules package-lock.json
 npm install
-npx nx build sc-slot-board-generator
+nx build sc-slot-board-generator
 ```
 
 ### Type Issues
 ```bash
 # Sync TypeScript references
-npx nx sync
-npx nx typecheck sc-slot-board-generator
+nx sync
+nx typecheck sc-slot-board-generator
 ```
 
 ### Test Issues
 ```bash
 # Clear Jest cache and rerun
-npx nx test sc-slot-board-generator --clearCache
-npx nx test sc-slot-board-generator --verbose
+nx test sc-slot-board-generator --clearCache
+nx test sc-slot-board-generator --verbose
 ```
 
 ## File Locations
