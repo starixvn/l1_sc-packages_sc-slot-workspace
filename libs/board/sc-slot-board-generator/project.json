@@ -1,0 +1,61 @@
+{
+  "name": "sc-slot-board-generator",
+  "$schema": "../../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "libs/board/sc-slot-board-generator/src",
+  "projectType": "library",
+  "targets": {
+    "build": {
+      "executor": "@nx/js:tsc",
+      "outputs": ["{options.outputPath}"],
+      "options": {
+        "outputPath": "dist/libs/board/sc-slot-board-generator",
+        "main": "libs/board/sc-slot-board-generator/src/index.ts",
+        "tsConfig": "libs/board/sc-slot-board-generator/tsconfig.lib.json",
+        "assets": ["libs/board/sc-slot-board-generator/*.md"]
+      }
+    },
+    "lint": {
+      "executor": "@nx/eslint:lint",
+      "outputs": ["{options.outputFile}"],
+      "options": {
+        "lintFilePatterns": ["libs/board/sc-slot-board-generator/**/*.ts"]
+      }
+    },
+    "test": {
+      "executor": "@nx/jest:jest",
+      "outputs": ["{workspaceRoot}/coverage/{projectRoot}"],
+      "options": {
+        "jestConfig": "libs/board/sc-slot-board-generator/jest.config.ts",
+        "passWithNoTests": true
+      },
+      "configurations": {
+        "ci": {
+          "ci": true,
+          "coverageReporters": ["text"]
+        }
+      }
+    },
+    "generate": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "npx ts-node scripts/generate-predefined-results.ts",
+        "cwd": "libs/board/sc-slot-board-generator"
+      }
+    },
+    "generate:batch": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "npx ts-node scripts/generate-predefined-results.ts --batch",
+        "cwd": "libs/board/sc-slot-board-generator"
+      }
+    },
+    "generate:demo": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "npx ts-node scripts/generate-predefined-results.ts --boards 50 --rtp 0.97 --output demo-results.json --description \"Quick demo with 50 boards\"",
+        "cwd": "libs/board/sc-slot-board-generator"
+      }
+    }
+  },
+  "tags": ["type:lib", "scope:board"]
+}

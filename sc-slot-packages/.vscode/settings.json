@@ -1,0 +1,32 @@
+{
+  "typescript.preferences.importModuleSpecifier": "relative",
+  "editor.formatOnSave": true,
+  "editor.codeActionsOnSave": {
+    "source.fixAll": true,
+    "source.organizeImports": true
+  },
+  "files.exclude": {
+    "**/node_modules": true,
+    "**/dist": true,
+    "**/.nx": true,
+    "**/coverage": true,
+    "**/*.js.map": true,
+    "**/*.d.ts.map": true
+  },
+  "search.exclude": {
+    "**/node_modules": true,
+    "**/dist": true,
+    "**/.nx": true,
+    "**/coverage": true,
+    "**/package-lock.json": true,
+    "**/yarn.lock": true
+  },
+  "typescript.suggest.autoImports": true,
+  "typescript.updateImportsOnFileMove.enabled": "always",
+  "eslint.workingDirectories": [
+    "libs/board/sc-slot-board-generator",
+    "libs/board/sc-slot-board-statistic"
+  ],
+  "jest.jestCommandLine": "npx nx test",
+  "nx.enableTelemetry": false
+}

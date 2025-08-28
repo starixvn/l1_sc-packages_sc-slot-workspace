@@ -1,0 +1,33 @@
+{
+  "name": "sc-slot-board-statistic",
+  "$schema": "../../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "libs/board/sc-slot-board-statistic/src",
+  "projectType": "library",
+  "targets": {
+    "build": {
+      "executor": "@nx/js:tsc",
+      "outputs": ["{options.outputPath}"],
+      "options": {
+        "outputPath": "dist/libs/board/sc-slot-board-statistic",
+        "main": "libs/board/sc-slot-board-statistic/src/index.ts",
+        "tsConfig": "libs/board/sc-slot-board-statistic/tsconfig.lib.json",
+        "assets": ["libs/board/sc-slot-board-statistic/*.md"]
+      }
+    },
+    "lint": {
+      "executor": "@nx/eslint:lint",
+      "outputs": ["{options.outputFile}"],
+      "options": {
+        "lintFilePatterns": ["libs/board/sc-slot-board-statistic/**/*.ts"]
+      }
+    },
+    "cascading-slot": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "node --experimental-specifier-resolution=node --loader ts-node/esm src/cascading-slot/statistic-reporter",
+        "cwd": "libs/board/sc-slot-board-statistic"
+      }
+    }
+  },
+  "tags": ["type:lib", "scope:board"]
+}
