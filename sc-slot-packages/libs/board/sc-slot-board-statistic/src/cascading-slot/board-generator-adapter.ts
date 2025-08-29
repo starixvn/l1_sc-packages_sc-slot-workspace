@@ -47,4 +47,16 @@ export class BoardGeneratorAdapter {
     getUnderlyingGenerator(): BoardGenerator {
         return this.boardGenerator;
     }
+
+    /**
+     * Get board settings for external integration
+     */
+    getBoardSettings() {
+        return {
+            reels: 6,
+            symbolsOnReel: 5,
+            numberOfSymbols: 11,
+            numberOfShuffles: 3,
+        };
+    }
 }

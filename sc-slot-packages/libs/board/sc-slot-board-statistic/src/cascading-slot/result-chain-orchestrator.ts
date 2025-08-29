@@ -1,11 +1,6 @@
-// Optional external calculator interfaces
-interface ExternalRoundCalculator {
-    processSpinning(round: Round, totalMultiplier?: number): void;
-}
-
-interface ExternalTumbleCalculator {
-    // Interface for tumble calculator
-}
+// Import external calculators the same way statistic-runner does
+import RoundCalculator from "sc-cascading-slot-base/src/board/round-calculator";
+import TumbleCalculator from "sc-cascading-slot-base/src/board/tumble-calculator";
 import { prop } from "ramda";
 import { RTPController, RTPConfiguration, RTPResult, BoardResult } from "./rtp-controller.js";
 import { Round, Statistic, calculateStatistic } from "./statistic-calculator.js";
@@ -52,44 +47,41 @@ export interface BoardGeneratorInterface {
         explodedSymbols?: number[];
         newSymbols?: number[];
     };
+    getUnderlyingGenerator(): any; // For external calculator integration
 }
 
 export class ResultChainOrchestrator {
     private readonly rtpController: RTPController;
-    private roundCalculator?: ExternalRoundCalculator;
-    private readonly externalCalculatorAvailable: boolean;
+    private roundCalculator?: RoundCalculator;
+    private externalCalculatorAvailable: boolean;
 
     constructor(
         private boardGeneratorFactory: () => BoardGeneratorInterface,
         rtpConfig: RTPConfiguration
     ) {
         this.rtpController = new RTPController(rtpConfig);
-        this.externalCalculatorAvailable = false; // Will be set by async init
+        this.externalCalculatorAvailable = this.initializeExternalCalculator();
     }
 
     /**
-     * Initialize external settlement calculator
+     * Initialize external settlement calculator (same pattern as statistic-runner)
      */
-    private async initializeExternalCalculator(): Promise<boolean> {
+    private initializeExternalCalculator(): boolean {
         try {
-            // Try to dynamically import external calculators
-            const roundCalcModule = await import("sc-cascading-slot-base/src/board/round-calculator");
-            const tumbleCalcModule = await import("sc-cascading-slot-base/src/board/tumble-calculator");
+            console.log("🔄 Initializing external settlement calculator...");
             
-            const RoundCalculator = roundCalcModule.default;
-            const TumbleCalculator = tumbleCalcModule.default;
-            
-            // Try to create external calculator
+            // Create calculator the same way statistic-runner does
             const boardGenerator = this.boardGeneratorFactory();
             this.roundCalculator = new RoundCalculator({
-                boardGenerator: boardGenerator as any,
+                boardGenerator: boardGenerator.getUnderlyingGenerator(),
                 tumbleCalculator: new TumbleCalculator(),
             });
             
             console.log("✅ External RoundCalculator initialized successfully");
             return true;
         } catch (error) {
-            console.warn("⚠️  External calculator not available:", error.message);
+            console.warn("⚠️  External calculator initialization failed:", error.message);
+            console.warn("📋 Stack trace:", error.stack);
             return false;
         }
     }
@@ -98,10 +90,6 @@ export class ResultChainOrchestrator {
      * Generate result chain with RTP validation and retries
      */
     async generateResultChain(config: ResultChainConfig): Promise<ResultChain> {
-        // Initialize external calculator if not already done
-        if (!this.externalCalculatorAvailable) {
-            (this as any).externalCalculatorAvailable = await this.initializeExternalCalculator();
-        }
         const startTime = Date.now();
         let bestChain: BoardResult[] = [];
         let bestRTP = 0;
@@ -204,12 +192,12 @@ export class ResultChainOrchestrator {
         for (let attempt = 0; attempt < maxAttempts; attempt++) {
             const initialBoard = boardGenerator.generate();
             
-            // Create round for settlement processing
+            // Create round for settlement processing (same format as statistic-runner)
             const round: Round = {
                 id: boardId,
-                coinValue: betSize,
-                betLevel: 1,
-                betMultiplier: 1,
+                coinValue: 0.1, // Use standard coin value
+                betLevel: Math.ceil(betSize / 2), // Convert betSize to betLevel 
+                betMultiplier: 20, // Standard multiplier (same as statistic-runner)
                 totalAmount: betSize,
                 odds: {
                     oddsByCounts: Object.assign({}, defaultOdds.normalSymbols.map(prop("payout"))),
@@ -238,7 +226,7 @@ export class ResultChainOrchestrator {
     }
 
     /**
-     * Process settlement using external calculator
+     * Process settlement using external calculator (same pattern as statistic-runner)
      */
     private async processSettlement(
         initialBoard: { newBoard: number[]; multipliers: number[] },
@@ -246,24 +234,28 @@ export class ResultChainOrchestrator {
         betSize: number
     ): Promise<BoardResult> {
         if (this.externalCalculatorAvailable && this.roundCalculator) {
-            // Use external calculator for real settlement
+            // Use external calculator for real settlement (same as statistic-runner spin function)
             this.roundCalculator.processSpinning(round, 0);
             
-            // Convert settlement result to BoardResult
+            // After processSpinning, round object is populated with:
+            // - round.settlementResult (tumbles, freeSpins, etc.)
+            // - round.betwin (total win amount)
+            // - round.totalTumbleWin (tumble-specific wins)
+            
             const cascadeCount = round.settlementResult?.tumbles.length || 0;
             const totalWin = round.betwin || 0;
 
             return {
                 board: initialBoard.newBoard,
                 multipliers: initialBoard.multipliers,
-                payoutResult: undefined, // Not needed with settlement result
+                payoutResult: undefined, // Not needed with real settlement result
                 cascadeCount,
                 totalCascadeWin: totalWin,
-                isFreeSpin: false,
-                accumulatedMultiplier: 0,
+                isFreeSpin: round.freeSpin || false,
+                accumulatedMultiplier: round.multiplier || 0,
                 remainingFreeSpins: round.settlementResult?.freeSpins.odds || 0,
                 settlementResult: round.settlementResult,
-                totalTumbleWin: round.totalTumbleWin,
+                totalTumbleWin: round.totalTumbleWin || totalWin,
             };
         } else {
             // Fallback: simulate basic board result
