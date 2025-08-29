@@ -190,3 +190,8 @@ The new architecture provides:
 - **Ready for production** (with external calculator integration)
 
 **Architecture is ready for the next phase: integrating real settlement calculator and scaling to production workloads.**
+
+## Related Documentation
+
+- [Tumble Win Calculation Process](./tumble-win-calculation-process.md) - Detailed analysis of settlement logic
+- [Feature System and Configuration Updates](./feature-system-and-config-updates.md) - Latest improvements to feature system and emotional patterns

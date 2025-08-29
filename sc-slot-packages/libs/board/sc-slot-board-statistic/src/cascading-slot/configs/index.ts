@@ -1,0 +1,61 @@
+// Configuration Index
+// Centralized exports for all configuration files
+
+// Player Type Configurations
+export {
+    LOSS_AVERSE_PLAYER_CONFIG,
+    RISK_SEEKER_CONFIG,
+    EXPLORER_CONFIG,
+    STREAK_HUNTER_CONFIG,
+    BALANCED_PLAYER_CONFIG,
+    HIGH_STAKES_CONFIG,
+    TOURNAMENT_CONFIG,
+    DEVELOPMENT_CONFIG,
+    DEMO_SHOWCASE_CONFIG,
+    PLAYER_TYPE_CONFIGS,
+    type PlayerTypeKey
+} from './player-type-configs.js';
+
+// Feature Configurations
+export {
+    CONSERVATIVE_FEATURE_CONFIG,
+    AGGRESSIVE_FEATURE_CONFIG,
+    EXPLORER_FEATURE_CONFIG,
+    TOURNAMENT_FEATURE_CONFIG,
+    HIGH_STAKES_FEATURE_CONFIG,
+    FEATURE_CONFIGS,
+    type FeatureConfigKey
+} from './feature-configs.js';
+
+// Pattern Templates
+export {
+    SIMPLE_ALTERNATING_TEMPLATE,
+    ESCALATING_WINS_TEMPLATE,
+    NEAR_MISS_HEAVY_TEMPLATE,
+    FEATURE_HEAVY_TEMPLATE,
+    GENTLE_RECOVERY_TEMPLATE,
+    HIGH_VOLATILITY_TEMPLATE,
+    BALANCED_RHYTHM_TEMPLATE,
+    PATTERN_TEMPLATES,
+    type PatternTemplateKey,
+    createPatternFromTemplate,
+    validatePatternTemplate
+} from './custom-pattern-templates.js';
+
+// Session Configurations
+export {
+    QUICK_SESSION_CONFIG,
+    EXTENDED_SESSION_CONFIG,
+    LUNCH_BREAK_CONFIG,
+    WEEKEND_SESSION_CONFIG,
+    MOBILE_SESSION_CONFIG,
+    SOCIAL_SESSION_CONFIG,
+    RELAXATION_SESSION_CONFIG,
+    EXCITEMENT_SESSION_CONFIG,
+    LEARNING_SESSION_CONFIG,
+    VIP_SESSION_CONFIG,
+    SESSION_CONFIGS,
+    type SessionConfigKey,
+    getSessionConfig,
+    createTimeBasedSessionConfig
+} from './session-configs.js';
