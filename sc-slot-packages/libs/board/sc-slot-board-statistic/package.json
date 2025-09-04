@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "cascading-slot": "node --experimental-specifier-resolution=node --loader ts-node/esm src/cascading-slot/statistic-reporter",
-    "test-orchestrator": "node --experimental-specifier-resolution=node --loader ts-node/esm src/test-orchestrator-with-real-calculator"
+    "test-simple": "node --experimental-specifier-resolution=node --loader ts-node/esm src/test-patterns-simple.ts"
   },
   "dependencies": {
     "chance": "^1.1.8",
