@@ -11,16 +11,17 @@
 
 ## 📦 **Published Packages:**
 
-### sc-slot-board-generator@1.2.0-beta.0
+### sc-slot-board-generator@1.2.0-beta.1
 - ✅ **Published** to npm registry with beta tag
-- ✅ **Simple Result Chain Generator** without RTP control
-- ✅ **Legacy Components** marked as deprecated
+- ✅ **Clean Architecture** - RTP logic removed
+- ✅ **Focused Responsibility** - Board generation only
 - ✅ **Backward Compatibility** maintained
 
-### sc-slot-board-statistic (updated)
+### sc-slot-board-statistic (current working system)
 - ✅ **RTP Controller** moved from board generator
-- ✅ **Result Chain Orchestrator** with settlement integration
+- ✅ **Result Chain Orchestrator** with real settlement integration
 - ✅ **Board Generator Adapter** for clean interfacing
+- ✅ **Working Test Scripts** for pattern validation
 - ✅ **Dependency Updated** to use beta version
 
 ---
