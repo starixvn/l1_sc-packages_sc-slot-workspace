@@ -27,6 +27,12 @@ Complete documentation for the slot board generation and pattern testing system.
   - Migration history and current status
 
 ### 📋 **Implementation Guides**
+- **[Development Guidelines](development-guidelines.md)** 🛠️  
+  *Essential rules and best practices for development*
+  - TypeScript and ts-node loader requirements
+  - Interface verification and testing standards
+  - External dependency integration rules
+
 - **[Feature System and Config Updates](feature-system-and-config-updates.md)** ⚙️  
   *Configuration system and feature management*
   - Feature trigger system updates
