@@ -227,7 +227,7 @@ export const ENGAGEMENT_PATTERNS: Record<string, EngagementPattern> = {
             {
                 type: 'feature-trigger',
                 duration: 1,
-                emotionalState: 'reward',
+                emotionalState: 'excitement',
                 description: "Feature trigger provides exploration reward"
             },
             {

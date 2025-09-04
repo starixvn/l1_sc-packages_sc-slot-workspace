@@ -2,6 +2,15 @@
   "compilerOptions": {
     "moduleResolution": "Node",
     "module": "ESNext",
-    "target": "ESNext"
-  }
+    "target": "ESNext",
+    "strict": false,
+    "skipLibCheck": true,
+    "esModuleInterop": true,
+    "allowSyntheticDefaultImports": true
+  },
+  "exclude": [
+    "tests/**/*",
+    "**/*.test.ts",
+    "**/*.spec.ts"
+  ]
 }

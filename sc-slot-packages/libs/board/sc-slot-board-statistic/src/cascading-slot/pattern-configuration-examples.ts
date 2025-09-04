@@ -46,7 +46,6 @@ export function createCustomRollerCoasterPattern(): string {
     
     // Register the custom pattern
     const patternId = `custom_${Date.now()}`;
-    const patternManager = new PatternConfigurationManager();
     
     // Add to manager (simplified approach)
     return patternId;

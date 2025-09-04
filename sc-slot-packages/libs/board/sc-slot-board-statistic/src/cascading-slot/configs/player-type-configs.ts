@@ -204,6 +204,7 @@ export const TOURNAMENT_CONFIG: PatternRTPConfiguration = {
     
     // Fair competition settings
     enableNearMiss: false,                          // Disable for competitive fairness
+    nearMissFrequency: 0.0,                         // No near misses for fairness
     enableFeatureTriggers: true,
     featureTriggerFrequency: 0.15                   // Conservative features
 };

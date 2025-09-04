@@ -6,36 +6,36 @@
       "quick": {
         "chainLength": 50,
         "betSize": 1.0,
-        "targetRTP": 0.85,
+        "targetRTP": 0.97,
         "saveDetailedResults": false,
         "description": "Quick test for development and debugging"
       },
       "standard": {
-        "chainLength": 100,
+        "chainLength": 125,
         "betSize": 1.0,
-        "targetRTP": 0.85,
+        "targetRTP": 0.97,
         "saveDetailedResults": true,
-        "description": "Standard test for pattern validation"
+        "description": "Standard test for pattern validation (100-150 boards)"
       },
       "comprehensive": {
         "chainLength": 500,
         "betSize": 1.0,
-        "targetRTP": 0.85,
+        "targetRTP": 0.97,
         "saveDetailedResults": true,
         "description": "Comprehensive test for production validation"
       },
       "production": {
         "chainLength": 1000,
         "betSize": 1.0,
-        "targetRTP": 0.85,
+        "targetRTP": 0.97,
         "saveDetailedResults": true,
         "description": "Production-level testing with large sample size"
       }
     },
     "customization": {
       "supportedBetSizes": [0.1, 0.5, 1.0, 2.0, 5.0, 10.0],
-      "supportedRTPTargets": [0.80, 0.82, 0.85, 0.88, 0.90],
-      "supportedChainLengths": [25, 50, 100, 200, 500, 1000, 2000],
+      "supportedRTPTargets": [0.94, 0.95, 0.96, 0.97, 0.98],
+      "supportedChainLengths": [25, 50, 100, 125, 150, 200, 500, 1000, 2000],
       "outputFormats": ["json", "csv", "markdown"],
       "metricsToTrack": [
         "RTP accuracy",
