@@ -1,0 +1,37 @@
+{
+  "timestamp": "2025-09-05T06:12:19.494Z",
+  "config": {
+    "patterns": [
+      "tease"
+    ],
+    "boardCounts": [
+      100
+    ],
+    "targetRTP": 0.97,
+    "createdBy": "script-generator",
+    "maxRetries": 10,
+    "tolerance": 0.02,
+    "outputDir": "./chain-output",
+    "betSize": 1
+  },
+  "summary": {
+    "total": 1,
+    "successful": 1,
+    "failed": 0,
+    "successRate": 100
+  },
+  "results": [
+    {
+      "success": true,
+      "chainName": "tease-100boards-1757052724648",
+      "filename": "tease-100boards-1757052724648.json",
+      "actualRTP": 0.46149999999999985,
+      "generationStats": {
+        "attempts": 1,
+        "duration": 14841,
+        "finalRTP": 0.46149999999999985,
+        "targetAchieved": false
+      }
+    }
+  ]
+}

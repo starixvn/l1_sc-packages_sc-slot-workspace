@@ -32,6 +32,185 @@ npm run test-pattern -- --help
 | **tease** | Near-miss pattern for anticipation-driven players | streak-hunter | Players motivated by "almost wins" |
 | **wave** | Rhythmic pattern for balanced gameplay | mixed | Players who prefer consistent variation |
 
+## 🔧 Symbol Generation System
+
+### Core Symbol Placement Logic
+
+The emotional patterns control **when** to trigger features, but the underlying board generator determines **what symbols** are placed on each board. Here's how the system works:
+
+#### Symbol Categories
+```
+Regular Symbols: 0, 1, 2, 3, 4, 5, 6, 7, 8  (winning combinations)
+Scatter Symbols: 9                           (free spin triggers)
+Wild Symbols:    10                          (substitute for any symbol)
+```
+
+#### Feature Trigger Requirements
+- **Free Spins**: Need **3+ scatter symbols (symbol 9)** on a single board
+- **Additional Free Spins**: Need **2+ scatter symbols** during free spin rounds  
+- **Tumble Cascade**: Triggered by **any winning combination** (symbols 0-8)
+
+#### Current Issue: Missing Scatter Symbols
+**Problem**: The board generator is only placing symbols 0-8, never symbol 9 (scatter)
+**Result**: Free spins cannot trigger because scatter symbols are absent
+**Root Cause**: Board generator configuration or external dependency limitation
+
+### Pattern-Controlled Symbol Generation
+
+Each emotional pattern influences symbol placement through these mechanisms:
+
+#### 1. **Emotional Phase Control**
+```typescript
+phases: [
+  {
+    type: 'loss',           // Controls win probability
+    duration: 3,            // How many spins  
+    emotionalState: 'tension'
+  },
+  {
+    type: 'medium-win',     // Influences symbol combinations
+    targetMultiplier: 3.5,  // Desired payout strength
+    emotionalState: 'relief'
+  }
+]
+```
+
+#### 2. **RTP-Driven Symbol Selection**  
+- Patterns request specific **win types** (loss, small-win, medium-win, big-win)
+- Board generator attempts to place symbols that achieve the **target multiplier**
+- **Scatter placement should be influenced** by pattern requests for features
+
+#### 3. **Feature Trigger Integration**
+```typescript
+featureConfigs: {
+  'free-spins': {
+    triggerSymbols: [9],          // Scatter symbols required
+    minSymbolCount: 3,            // Need 3+ scatters
+    triggerProbability: 0.08,     // 8% chance when scatters present
+    patternTriggered: true        // Pattern can request this feature
+  }
+}
+```
+
+### Expected vs Actual Behavior
+
+#### **Expected Flow:**
+1. Pattern requests a feature (e.g., during 'excitement' phase)
+2. Feature system calculates 8% chance for free spins  
+3. Board generator places 3+ scatter symbols (symbol 9)
+4. Settlement calculator detects scatters and awards free spins
+
+#### **Actual Flow:**
+1. Pattern requests a feature ✅
+2. Feature system calculates 8% chance for free spins ✅
+3. Board generator places symbols 0-8 only ❌ **Missing Step**
+4. No scatter symbols = No free spins ❌
+
+### Troubleshooting Symbol Generation
+
+#### Check Symbol Range
+```bash
+# Look for scatter symbols in generated chains
+grep -r "\"board\".*9" chain-output/
+# Should return matches - if empty, scatters are missing
+```
+
+#### Verify Board Generator Configuration
+```typescript
+// In generate-chains.ts - should include all symbols
+const boardGeneratorFactory = () => new BoardGeneratorAdapter({
+    numberOfSymbols: 11,  // 0-10 including scatter symbol 9
+    // ... other settings
+});
+```
+
+#### Feature Configuration
+```typescript
+// Default scatter symbol configuration
+'free-spins': {
+    triggerSymbols: [9],        // Scatter symbol ID
+    minSymbolCount: 3,          // Minimum for trigger
+    triggerProbability: 0.08    // 8% when scatters present
+}
+```
+
+### 🔨 Solutions & Next Steps
+
+#### **Solution 1: Verify External Board Generator**
+The issue may be in the `sc-slot-board-generator` dependency not properly handling scatter symbols:
+
+```bash
+# Check if the external generator supports scatter symbols
+npm list sc-slot-board-generator
+# Version should be 1.2.0-beta.1+ for feature support
+```
+
+#### **Solution 2: Update Board Generator Configuration**
+Ensure the board generator includes all symbol types:
+
+```typescript
+// In BoardGeneratorAdapter constructor
+this.boardGenerator = new BoardGenerator(
+    boardSettings, 
+    multiplierConfig, 
+    modeSettings,      // <- May need scatter symbol config
+    difficulty
+);
+```
+
+#### **Solution 3: Feature-Aware Symbol Placement**
+Implement logic that forces scatter placement when patterns request features:
+
+```typescript
+// Pseudo-code for enhanced symbol generation
+if (patternRequestsFeature && featureType === 'free-spins') {
+    // Force placement of 3+ scatter symbols on board
+    placeScatterSymbols(board, 3, symbolPosition);
+}
+```
+
+#### **Solution 4: External Calculator Integration**
+Verify that the settlement calculator properly detects and awards free spins:
+
+```typescript
+// Check if settlement results include free spin data
+const settlement = calculator.calculate(board);
+console.log(settlement.freeSpins.odds); // Should be > 0 when scatters present
+```
+
+### 🎭 Pattern-Specific Considerations
+
+Each emotional pattern should trigger features at different rates:
+
+#### **Discovery Pattern** (Current Issue)
+- **Should**: Trigger features frequently to reward exploration
+- **Actually**: No features trigger due to missing scatter symbols  
+- **Expected Free Spin Rate**: ~10-15% of boards should have features
+
+#### **Cliffhanger Pattern**  
+- **Should**: Build suspense before delivering dramatic free spin wins
+- **Target Free Spin Rate**: ~5-8% with higher multipliers
+
+#### **Comeback Pattern**
+- **Should**: Use features during 'relief' phases after losses
+- **Target Free Spin Rate**: ~8-12% for recovery feeling
+
+### 🚨 Immediate Action Items
+
+1. **Diagnose Board Generator**: Check why symbol 9 is never generated
+2. **Verify Dependencies**: Ensure `sc-slot-board-generator` supports scatter symbols
+3. **Test Symbol Placement**: Create a minimal test that places scatter symbols manually
+4. **Update Documentation**: Once fixed, document expected free spin rates per pattern
+
+### 📈 Expected Results After Fix
+
+Once scatter symbols are properly generated:
+
+- **Free Spin Trigger Rate**: 8-15% of boards (pattern-dependent)
+- **Average Free Spins Won**: 3-6 per trigger  
+- **Feature Distribution**: Different patterns will show distinct feature timing
+- **RTP Impact**: Features should contribute 15-25% of total RTP
+
 ## 📊 Script Details
 
 ### `npm run test-simple`
@@ -236,8 +415,10 @@ npm run
 - Check settlement calculator integration
 
 **No Features Triggering**
-- Verify `sc-cascading-slot-base` is properly installed
-- Check that settlement results contain tumbles/freeSpins data
+- **Check for scatter symbols**: Run `grep -r "\"board\".*9" chain-output/`
+- **Verify symbol range**: Ensure board generator uses all symbols 0-10
+- **External dependency**: Check `sc-cascading-slot-base` version 2.0.0+  
+- **Settlement data**: Verify settlement results contain tumbles/freeSpins data
 
 ### Validation Commands
 ```bash
@@ -249,6 +430,21 @@ npm run test-pattern -- 10 comeback
 
 # Check dependencies
 npm list sc-cascading-slot-base sc-slot-board-generator
+
+# Symbol generation diagnostics
+npm run generate-chains 10 comeback
+grep -r "\"board\".*9" chain-output/    # Check for scatter symbols
+grep -r "freeSpinsWon" chain-output/     # Check for free spin awards
+
+# Board symbol range analysis
+node -e "
+const chain = require('./chain-output/[latest-file].json');
+const allSymbols = new Set();
+chain.boards.forEach(b => b.board.forEach(s => allSymbols.add(s)));
+console.log('Symbols found:', Array.from(allSymbols).sort());
+console.log('Expected: 0,1,2,3,4,5,6,7,8,9,10');
+console.log('Missing scatter (9):', !allSymbols.has(9));
+"
 ```
 
 ## 🔄 Development Workflow

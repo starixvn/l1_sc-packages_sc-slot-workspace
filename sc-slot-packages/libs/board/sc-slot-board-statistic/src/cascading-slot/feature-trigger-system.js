@@ -32,7 +32,7 @@ export class FeatureTriggerSystem {
             if (!featureConfig)
                 continue;
             // Check if this feature should trigger
-            const shouldTrigger = this.shouldTriggerFeature(featureConfig, board, symbolCounts, patternRequest?.triggerFeature && patternRequest?.featureType === featureType, currentWin);
+            const shouldTrigger = this.checkFeatureTrigger(featureConfig, board, symbolCounts, patternRequest?.triggerFeature && patternRequest?.featureType === featureType, currentWin);
             if (shouldTrigger) {
                 const result = this.executeFeature(featureType, featureConfig, board, currentWin);
                 this.setFeatureCooldown(featureType);
@@ -49,7 +49,7 @@ export class FeatureTriggerSystem {
     /**
      * Check if specific feature should trigger based on conditions
      */
-    shouldTriggerFeature(featureConfig, board, symbols, patternRequestsFeature, currentWin) {
+    checkFeatureTrigger(featureConfig, board, symbols, patternRequestsFeature, currentWin) {
         // Check if trigger symbols are present
         const triggerSymbolsPresent = featureConfig.triggerSymbols.some(symbol => (symbols[symbol] || 0) >= featureConfig.minSymbolCount);
         // Must have either trigger symbols or pattern request

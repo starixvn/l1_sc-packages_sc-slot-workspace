@@ -281,6 +281,8 @@ async function importSingleFile(filePath, chainRepository, statsRepository, conf
     }
 }
 // Run the script
-if (import.meta.url === `file://${process.argv[1]}`) {
+// Fix for ES module entry point with ts-node
+const isMainModule = process.argv[1] && process.argv[1].includes('import-chains');
+if (isMainModule) {
     main().catch(console.error);
 }

@@ -22,10 +22,24 @@ export interface BoardResult {
     multipliers: number[];
     payoutResult?: any; // Will be populated by settlement
     cascadeCount: number;
-    totalCascadeWin: number;
+    totalCascadeWin: number; // Now includes main game + free spin wins when free spins are executed
     isFreeSpin: boolean;
     accumulatedMultiplier: number;
-    remainingFreeSpins: number;
+    remainingFreeSpins: number; // Will be 0 when free spins are executed immediately
+    freeSpinsPlayed?: number; // Track how many free spins were actually played
+    freeSpinWins?: number; // Track separate contribution from free spins
+    // Full free spin board sequence for complete player experience
+    freeSpinBoards?: Array<{
+        board: number[];
+        multipliers: number[];
+        cascadeCount: number;
+        win: number;
+        isRetrigger: boolean;
+        retriggeredSpins?: number;
+        spinsRemaining: number;
+        spinIndex: number; // 1, 2, 3, etc.
+        settlementResult?: any;
+    }>;
     // Settlement-specific data
     settlementResult?: {
         tumbles: {

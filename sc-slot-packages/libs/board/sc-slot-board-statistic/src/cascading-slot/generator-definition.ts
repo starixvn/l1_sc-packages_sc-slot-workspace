@@ -30,17 +30,17 @@ export const boardDefinition = {
       10: 2,
     },
     [Difficulty.Medium]: {
-      0: 176,
-      1: 147,
-      2: 132,
-      3: 110,
-      4: 88,
-      5: 73,
+      0: 155,  // Restored balanced distribution
+      1: 135,  
+      2: 120,
+      3: 100,
+      4: 85,
+      5: 70,
       6: 58,
-      7: 46,
-      8: 23,
-      9: 15,
-      10: 2,
+      7: 45,
+      8: 22,
+      9: 25,   // Sustainable scatter level for realistic free spins (was 11, now 25 = 2.3x increase)
+      10: 8,   // Moderate multiplier increase
     },
     [Difficulty.Easy]: {
       0: 158,

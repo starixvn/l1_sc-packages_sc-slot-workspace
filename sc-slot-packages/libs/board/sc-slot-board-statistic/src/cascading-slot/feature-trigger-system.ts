@@ -82,7 +82,7 @@ export class FeatureTriggerSystem {
             if (!featureConfig) continue;
 
             // Check if this feature should trigger
-            const shouldTrigger = this.shouldTriggerFeature(
+            const shouldTrigger = this.checkFeatureTrigger(
                 featureConfig,
                 board,
                 symbolCounts,
@@ -109,7 +109,7 @@ export class FeatureTriggerSystem {
     /**
      * Check if specific feature should trigger based on conditions
      */
-    private shouldTriggerFeature(
+    private checkFeatureTrigger(
         featureConfig: FeatureTriggerCondition,
         board: number[],
         symbols: Record<number, number>,
@@ -317,8 +317,8 @@ export const DEFAULT_FEATURE_CONFIG: FeatureTriggerConfig = {
         'free-spins': {
             type: 'free-spins',
             triggerSymbols: [9],          // Scatter symbols
-            minSymbolCount: 3,            // Need 3+ scatters for free spins
-            triggerProbability: 0.08,     // 8% chance when scatters present
+            minSymbolCount: 3,            // Keep original business rule: need 3+ scatters
+            triggerProbability: 0.08,     // Keep original 8% trigger probability  
             patternTriggered: true
         },
         'additional-free-spins': {
