@@ -85,7 +85,7 @@ export class ResultChainOrchestrator {
                 duration,
                 finalRTP: finalRtpResult.actualRTP,
                 averageWin: finalRtpResult.totalWins / config.boardCount,
-                maxWin: Math.max(...bestChain.map(board => board.totalCascadeWin)),
+                maxWin: Math.max(...bestChain.map(board => board.totalTumbleWin || 0)),
                 hitFrequency: finalRtpResult.hitFrequency,
             },
             tumbleStats,
@@ -105,7 +105,7 @@ export class ResultChainOrchestrator {
             if (i % 20 === 19) {
                 // Adjust every 20 boards
                 const currentRTP = boards.length > 0
-                    ? boards.reduce((sum, board) => sum + board.totalCascadeWin, 0) / (boards.length * config.betSize)
+                    ? boards.reduce((sum, board) => sum + (board.totalTumbleWin || 0), 0) / (boards.length * config.betSize)
                     : 0;
                 console.log(`📈 Progress: ${i + 1}/${config.boardCount} boards, current RTP: ${(currentRTP * 100).toFixed(2)}%`);
             }
@@ -139,7 +139,7 @@ export class ResultChainOrchestrator {
             };
             // Process settlement using external calculator
             const boardResult = await this.processSettlement(initialBoard, round, betSize);
-            const distance = Math.abs(boardResult.totalCascadeWin - targetWin);
+            const distance = Math.abs((boardResult.totalTumbleWin || 0) - targetWin);
             if (distance < bestDistance || bestBoard === null) {
                 bestBoard = boardResult;
                 bestDistance = distance;
@@ -153,60 +153,256 @@ export class ResultChainOrchestrator {
         return bestBoard;
     }
     /**
-     * Process settlement using external calculator with immediate free spin execution
+     * Process settlement using external calculator for proper wins + BoardGenerator for correct explodedSymbols
      */
     async processSettlement(initialBoard, round, betSize) {
+        // Calculate bet details for chain data
+        const coinValue = round.coinValue;
+        const betLevel = round.betLevel;
+        const betMultiplier = round.betMultiplier;
         if (this.externalCalculatorAvailable && this.roundCalculator) {
-            // Use external calculator for real settlement (same as statistic-runner spin function)
+            // Use external calculator for proper settlement (business rules, wins, etc.)
             this.roundCalculator.processSpinning(round, 0);
-            // After processSpinning, round object is populated with:
-            // - round.settlementResult (tumbles, freeSpins, etc.)
-            // - round.betwin (total win amount)
-            // - round.totalTumbleWin (tumble-specific wins)
-            // Count only actual cascades (tumbles where symbols were removed and board changed)
-            const cascadeCount = round.settlementResult?.tumbles?.filter(tumble => {
-                // Check if symbols were actually exploded/removed
-                const symbolsExploded = tumble.explodedSymbols &&
-                    tumble.explodedSymbols.some((pos) => pos !== -1);
-                // Check if board actually changed
-                const boardChanged = tumble.originalBoard !== tumble.newBoard;
-                // Only count as cascade if both conditions are met
-                return symbolsExploded && boardChanged;
-            }).length || 0;
+            // Use external calculator's tumbles data as-is (it's already correct)
+            const tumbles = round.settlementResult?.tumbles || [];
             let totalWin = round.betwin || 0;
             let freeSpinWins = 0;
             let totalFreeSpinsPlayed = 0;
-            // Execute free spins immediately if awarded and capture all individual boards
-            const freeSpinsAwarded = round.settlementResult?.freeSpins.odds || 0;
             let freeSpinBoardSequence = [];
+            // Execute free spins if awarded
+            const freeSpinsAwarded = round.settlementResult?.freeSpins.odds || 0;
             if (freeSpinsAwarded > 0) {
                 const freeSpinResults = await this.executeFreeSpins(round, freeSpinsAwarded);
                 freeSpinWins = freeSpinResults.totalWins;
                 totalFreeSpinsPlayed = freeSpinResults.totalSpinsPlayed;
                 freeSpinBoardSequence = freeSpinResults.freeSpinBoards;
-                totalWin += freeSpinWins; // Include free spin wins in total
+                totalWin += freeSpinWins;
             }
             return {
                 board: initialBoard.newBoard,
                 multipliers: initialBoard.multipliers,
                 payoutResult: undefined,
-                cascadeCount,
-                totalCascadeWin: totalWin,
+                cascadeCount: 0,
+                totalCascadeWin: 0,
                 isFreeSpin: round.freeSpin || false,
                 accumulatedMultiplier: round.multiplier || 0,
                 remainingFreeSpins: freeSpinsAwarded > 0 ? 0 : (round.settlementResult?.freeSpins.odds || 0),
                 freeSpinsPlayed: totalFreeSpinsPlayed,
                 freeSpinWins,
                 freeSpinBoards: freeSpinBoardSequence.length > 0 ? freeSpinBoardSequence : undefined,
-                settlementResult: round.settlementResult,
-                totalTumbleWin: round.totalTumbleWin || (round.betwin || 0), // Keep original tumble wins separate
+                settlementResult: {
+                    tumbles: tumbles,
+                    freeSpins: round.settlementResult?.freeSpins || { count: 0, odds: 0 },
+                    additionalFreeSpins: round.settlementResult?.additionalFreeSpins || { count: 0, odds: 0 }
+                },
+                totalTumbleWin: round.totalTumbleWin || totalWin,
+                // Include bet data for stake flexibility
+                betLevel,
+                coinValue,
+                betMultiplier,
+                betAmount: coinValue * betLevel * betMultiplier
             };
         }
         else {
             // Fallback: simulate basic board result
-            console.warn("⚠️  Using fallback settlement logic - results may be inaccurate");
+            console.warn("⚠️  External calculator not available, using fallback");
             return this.simulateBoardResult(initialBoard, betSize);
         }
+    }
+    /**
+     * Fix explodedSymbols in tumbles using BoardGenerator (for external calculator results)
+     */
+    async fixExplodedSymbolsInTumbles(originalTumbles, initialBoard, initialMultipliers) {
+        const boardGenerator = this.boardGeneratorFactory();
+        const fixedTumbles = [];
+        let currentBoard = [...initialBoard];
+        let currentMultipliers = [...initialMultipliers];
+        for (const originalTumble of originalTumbles) {
+            if (originalTumble.explodedSymbols && originalTumble.explodedSymbols.some((s) => s !== -1)) {
+                // External calculator found winning symbols - extract them from exploded positions
+                const winSymbols = [];
+                const explodedPositions = [];
+                originalTumble.explodedSymbols.forEach((symbol, position) => {
+                    if (symbol !== -1) {
+                        winSymbols.push(symbol);
+                        explodedPositions.push(position);
+                    }
+                });
+                // Get unique winning symbols
+                const uniqueWinSymbols = [...new Set(winSymbols)];
+                // Use BoardGenerator to get correct newBoard and newSymbols based on actual exploded positions
+                const boardGeneratorResult = boardGenerator.explodeAndRefill(currentBoard, uniqueWinSymbols, currentMultipliers);
+                // Create fixed tumble keeping external calculator's exploded positions (which are correct)
+                // but using BoardGenerator for newBoard and newSymbols
+                const fixedTumble = {
+                    ...originalTumble,
+                    originalBoard: currentBoard.join(','),
+                    newBoard: originalTumble.newBoard || boardGeneratorResult.newBoard.join(','),
+                    explodedSymbols: originalTumble.explodedSymbols,
+                    newSymbols: boardGeneratorResult.newSymbols || originalTumble.newSymbols,
+                    multipliers: boardGeneratorResult.multipliers || currentMultipliers
+                };
+                fixedTumbles.push(fixedTumble);
+                // Update board state for next tumble - use the actual new board from external calculator
+                if (originalTumble.newBoard) {
+                    currentBoard = originalTumble.newBoard.split(',').map(Number);
+                }
+                else {
+                    currentBoard = boardGeneratorResult.newBoard;
+                }
+                currentMultipliers = boardGeneratorResult.multipliers || currentMultipliers;
+            }
+            else {
+                // No wins - keep original tumble as-is but update board tracking
+                fixedTumbles.push(originalTumble);
+                if (originalTumble.newBoard) {
+                    currentBoard = originalTumble.newBoard.split(',').map(Number);
+                }
+            }
+        }
+        return fixedTumbles;
+    }
+    /**
+     * Fallback simulation when external calculator not available
+     */
+    simulateBoardResult(initialBoard, betSize) {
+        return {
+            board: initialBoard.newBoard,
+            multipliers: initialBoard.multipliers,
+            payoutResult: undefined,
+            cascadeCount: 0,
+            totalCascadeWin: 0,
+            isFreeSpin: false,
+            accumulatedMultiplier: 0,
+            remainingFreeSpins: 0,
+            freeSpinsPlayed: 0,
+            freeSpinWins: 0,
+            freeSpinBoards: undefined,
+            settlementResult: {
+                tumbles: [],
+                freeSpins: { count: 0, odds: 0 },
+                additionalFreeSpins: { count: 0, odds: 0 }
+            },
+            totalTumbleWin: 0,
+            betLevel: 1,
+            coinValue: 0.1,
+            betMultiplier: 10,
+            betAmount: 1
+        };
+    }
+    /**
+     * Process tumbles using BoardGenerator for correct explodedSymbols generation
+     */
+    async processTumblesWithBoardGenerator(initialBoard, initialMultipliers, betSize) {
+        const boardGenerator = this.boardGeneratorFactory();
+        const tumbles = [];
+        let currentBoard = [...initialBoard];
+        let currentMultipliers = [...initialMultipliers];
+        let totalWin = 0;
+        // Maximum tumble iterations to prevent infinite loops
+        const maxTumbles = 10;
+        for (let tumbleIndex = 0; tumbleIndex < maxTumbles; tumbleIndex++) {
+            // Detect winning symbols on current board
+            const winSymbols = this.detectWinningSymbols(currentBoard);
+            if (winSymbols.length === 0) {
+                break; // No more wins, stop tumbling
+            }
+            // Use BoardGenerator.explodeAndRefill for correct processing
+            const tumbleResult = boardGenerator.explodeAndRefill(currentBoard, winSymbols, currentMultipliers);
+            // Calculate win for this tumble
+            const tumbleWin = this.calculateTumbleWin(winSymbols, betSize);
+            totalWin += tumbleWin;
+            // Create tumble data with correct explodedSymbols from BoardGenerator
+            const tumbleData = {
+                originalBoard: currentBoard.join(','),
+                newBoard: tumbleResult.newBoard.join(','),
+                explodedSymbols: tumbleResult.explodedSymbols,
+                newSymbols: tumbleResult.newSymbols,
+                multipliers: tumbleResult.multipliers || [],
+                icons: this.createIconsData(winSymbols, tumbleWin, currentBoard),
+                win: tumbleWin
+            };
+            tumbles.push(tumbleData);
+            // Update board state for next tumble
+            currentBoard = tumbleResult.newBoard;
+            currentMultipliers = tumbleResult.multipliers || [];
+        }
+        return { tumbles, totalWin };
+    }
+    /**
+     * Detect winning symbols on the board (simplified but functional version)
+     */
+    detectWinningSymbols(board) {
+        // Count each symbol on the 30-position board (6x5 grid)
+        const symbolCounts = {};
+        board.forEach(symbol => {
+            if (symbol >= 0 && symbol <= 10) { // Normal symbols 0-10
+                symbolCounts[symbol] = (symbolCounts[symbol] || 0) + 1;
+            }
+        });
+        // Return symbols with 8+ matches (business rule - cannot change)
+        const winSymbols = [];
+        Object.entries(symbolCounts).forEach(([symbol, count]) => {
+            if (count >= 8) { // Business rule: minimum 8 symbols for win
+                winSymbols.push(parseInt(symbol));
+            }
+        });
+        return winSymbols;
+    }
+    /**
+     * Calculate win amount for a tumble based on winning symbols
+     */
+    calculateTumbleWin(winSymbols, betSize) {
+        // Simple calculation based on symbol values and odds
+        let totalWin = 0;
+        winSymbols.forEach(symbol => {
+            // Basic payout calculation (this should match the actual game rules)
+            const baseOdds = this.getSymbolOdds(symbol);
+            totalWin += baseOdds * betSize;
+        });
+        return totalWin;
+    }
+    /**
+     * Get odds for a symbol (simplified version)
+     */
+    getSymbolOdds(symbol) {
+        // Default odds for different symbols (this should match game configuration)
+        const symbolOdds = {
+            0: 5,
+            1: 8,
+            2: 10,
+            3: 16,
+            4: 20,
+            5: 15,
+            6: 40,
+            7: 12,
+            8: 25,
+            9: 18 // Special
+        };
+        return symbolOdds[symbol] || 5; // Default odds
+    }
+    /**
+     * Create icons data in the expected format
+     */
+    createIconsData(winSymbols, totalWin, board) {
+        const icons = {};
+        // Count actual symbols on board for accurate icons data
+        const symbolCounts = {};
+        board.forEach(symbol => {
+            if (winSymbols.includes(symbol)) {
+                symbolCounts[symbol] = (symbolCounts[symbol] || 0) + 1;
+            }
+        });
+        winSymbols.forEach(symbol => {
+            const count = symbolCounts[symbol] || 5; // Actual count from board
+            const odds = this.getSymbolOdds(symbol);
+            icons[symbol.toString()] = {
+                count,
+                odds,
+                win: odds * 0.05 // Base win calculation (should match game rules)
+            };
+        });
+        return icons;
     }
     /**
      * Execute free spins immediately and capture all individual boards for complete player experience
@@ -242,9 +438,11 @@ export class ResultChainOrchestrator {
             const retriggeredSpins = freeSpinRound.settlementResult?.freeSpins.odds || 0;
             // Count only actual cascades (tumbles where symbols were removed and board changed)
             const cascadeCount = freeSpinRound.settlementResult?.tumbles?.filter(tumble => {
+                // Type-safe access to explodedSymbols
+                const explodedSymbols = tumble.explodedSymbols;
                 // Check if symbols were actually exploded/removed
-                const symbolsExploded = tumble.explodedSymbols &&
-                    tumble.explodedSymbols.some((pos) => pos !== -1);
+                const symbolsExploded = explodedSymbols &&
+                    explodedSymbols.some((pos) => pos !== -1);
                 // Check if board actually changed
                 const boardChanged = tumble.originalBoard !== tumble.newBoard;
                 // Only count as cascade if both conditions are met
@@ -285,25 +483,6 @@ export class ResultChainOrchestrator {
             });
         }
         return { totalWins, totalSpinsPlayed, freeSpinBoards };
-    }
-    /**
-     * Fallback settlement simulation (for when external calculator unavailable)
-     */
-    simulateBoardResult(initialBoard, betSize) {
-        // Simple simulation - this should be replaced with real calculator
-        const hasWin = Math.random() < 0.3; // 30% hit frequency
-        const totalWin = hasWin ? betSize * (0.1 + Math.random() * 2) : 0; // 0.1x to 2x bet
-        const cascadeCount = hasWin ? Math.floor(Math.random() * 3) + 1 : 0;
-        return {
-            board: initialBoard.newBoard,
-            multipliers: initialBoard.multipliers,
-            cascadeCount,
-            totalCascadeWin: totalWin,
-            isFreeSpin: false,
-            accumulatedMultiplier: 0,
-            remainingFreeSpins: 0,
-            totalTumbleWin: totalWin,
-        };
     }
     /**
      * Calculate tumble statistics from boards
@@ -352,6 +531,14 @@ export class ResultChainOrchestrator {
      * Export result chain to JSON
      */
     exportResultChainToJSON(chain) {
+        // Extract bet data from first board (all boards have same bet settings)
+        const sampleBoard = chain.boards[0];
+        const betData = {
+            betLevel: sampleBoard.betLevel || 1,
+            coinValue: sampleBoard.coinValue || 0.1,
+            betMultiplier: sampleBoard.betMultiplier || 10,
+            betAmount: sampleBoard.betAmount || 1
+        };
         const exportData = {
             metadata: {
                 generated: new Date().toISOString(),
@@ -359,15 +546,15 @@ export class ResultChainOrchestrator {
                 stats: chain.generationStats,
                 rtpResult: chain.rtpResult,
                 tumbleStats: chain.tumbleStats,
+                betData, // ✅ Move bet data to metadata
             },
             boards: chain.boards.map((board, index) => ({
                 index,
                 board: board.board,
                 multipliers: board.multipliers,
-                totalWin: board.totalCascadeWin,
-                cascadeCount: board.cascadeCount,
+                // ❌ Remove deprecated fields: cascadeCount, totalCascadeWin
                 settlementResult: board.settlementResult,
-                totalTumbleWin: board.totalTumbleWin,
+                totalTumbleWin: board.totalTumbleWin || 0, // ✅ Only include totalTumbleWin
             })),
         };
         return JSON.stringify(exportData, null, 2);

@@ -22,7 +22,7 @@ export interface BoardResult {
     multipliers: number[];
     payoutResult?: any; // Will be populated by settlement
     cascadeCount: number;
-    totalCascadeWin: number; // Now includes main game + free spin wins when free spins are executed
+    totalCascadeWin: number; // DEPRECATED: Use totalTumbleWin instead
     isFreeSpin: boolean;
     accumulatedMultiplier: number;
     remainingFreeSpins: number; // Will be 0 when free spins are executed immediately
@@ -48,11 +48,18 @@ export interface BoardResult {
             originalBoard: string;
             newBoard: string;
             multipliers: number[];
+            explodedSymbols?: number[]; // Added for correct explodedSymbols from BoardGenerator
+            newSymbols?: number[];      // Added for correct newSymbols from BoardGenerator
         }[];
         freeSpins: { count: number; odds: number };
         additionalFreeSpins: { count: number; odds: number };
     };
     totalTumbleWin?: number;
+    // Bet data for chain analysis
+    betLevel?: number;
+    coinValue?: number;
+    betMultiplier?: number;
+    betAmount?: number;
 }
 
 export interface WinDistribution {
@@ -94,10 +101,10 @@ export class RTPController {
      */
     validateRTP(boardResults: BoardResult[]): RTPResult {
         const totalBets = boardResults.length * this.config.betSize;
-        const totalWins = sum(map((result) => result.totalCascadeWin, boardResults));
+        const totalWins = sum(map((result) => result.totalTumbleWin || 0, boardResults));
         const actualRTP = totalWins / totalBets;
 
-        const winningBoards = filter((result) => result.totalCascadeWin > 0, boardResults);
+        const winningBoards = filter((result) => (result.totalTumbleWin || 0) > 0, boardResults);
         const hitFrequency = winningBoards.length / boardResults.length;
 
         const variance = this.calculateVariance(boardResults);
@@ -117,7 +124,7 @@ export class RTPController {
      * Calculate variance of wins for volatility measurement
      */
     private calculateVariance(boardResults: BoardResult[]): number {
-        const wins = map((result) => result.totalCascadeWin, boardResults);
+        const wins = map((result) => result.totalTumbleWin || 0, boardResults);
         const meanWin = mean(wins);
         const squaredDiffs = map((win) => Math.pow(win - meanWin, 2), wins);
         return mean(squaredDiffs);
@@ -161,11 +168,11 @@ export class RTPController {
     /**
      * Calculate current RTP from completed boards
      */
-    private calculateCurrentRTP(currentResults: BoardResult[]): number {
+    protected calculateCurrentRTP(currentResults: BoardResult[]): number {
         if (currentResults.length === 0) return 0;
 
         const totalBets = currentResults.length * this.config.betSize;
-        const totalWins = sum(map((result) => result.totalCascadeWin, currentResults));
+        const totalWins = sum(map((result) => result.totalTumbleWin || 0, currentResults));
 
         return totalWins / totalBets;
     }

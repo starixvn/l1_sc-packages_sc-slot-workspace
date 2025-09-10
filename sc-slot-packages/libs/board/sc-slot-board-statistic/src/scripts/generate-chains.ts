@@ -103,6 +103,15 @@ async function main() {
                         const filePath = join(config.outputDir, filename);
                         
                         const actualRTP = chainResult.actualRTP || 0;
+                        // Extract bet data from first board (all boards have same bet settings)
+                        const sampleBoard = chainResult.boards[0];
+                        const betData = {
+                            betLevel: sampleBoard.betLevel || 1,
+                            coinValue: sampleBoard.coinValue || 0.1,
+                            betMultiplier: sampleBoard.betMultiplier || 10,
+                            betAmount: sampleBoard.betAmount || 1
+                        };
+
                         const chainData = {
                             metadata: {
                                 name: chainName,
@@ -114,7 +123,8 @@ async function main() {
                                 meetsTargetRTP: Math.abs(actualRTP - config.targetRTP) <= config.tolerance,
                                 createdBy: config.createdBy,
                                 generatedAt: new Date().toISOString(),
-                                generationStats: chainResult.generationStats
+                                generationStats: chainResult.generationStats,
+                                betData // ✅ Add bet data to metadata
                             },
                             config: {
                                 boardCount: boardCount,
@@ -125,7 +135,20 @@ async function main() {
                                 maxRetries: config.maxRetries,
                                 tolerance: config.tolerance
                             },
-                            boards: chainResult.boards,
+                            // ✅ Filter out deprecated fields from boards
+                            boards: chainResult.boards.map(board => ({
+                                board: board.board,
+                                multipliers: board.multipliers,
+                                // ❌ Remove: cascadeCount, totalCascadeWin, betLevel, coinValue, betMultiplier, betAmount
+                                isFreeSpin: board.isFreeSpin,
+                                accumulatedMultiplier: board.accumulatedMultiplier,
+                                remainingFreeSpins: board.remainingFreeSpins,
+                                freeSpinsPlayed: board.freeSpinsPlayed,
+                                freeSpinWins: board.freeSpinWins,
+                                freeSpinBoards: board.freeSpinBoards,
+                                settlementResult: board.settlementResult,
+                                totalTumbleWin: board.totalTumbleWin || 0 // ✅ Only include totalTumbleWin
+                            })),
                             tumbleStats: chainResult.tumbleStats,
                             patternInfo: AVAILABLE_PATTERNS[pattern as keyof typeof AVAILABLE_PATTERNS]
                         };

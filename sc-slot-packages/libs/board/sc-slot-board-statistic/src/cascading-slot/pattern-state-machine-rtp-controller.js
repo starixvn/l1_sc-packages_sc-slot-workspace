@@ -226,7 +226,7 @@ export class PatternStateMachineRTPController extends RTPController {
         if (currentResults.length === 0)
             return 0;
         const totalBets = currentResults.length * this.patternConfig.betSize;
-        const totalWins = currentResults.reduce((sum, result) => sum + result.totalCascadeWin, 0);
+        const totalWins = currentResults.reduce((sum, result) => sum + (result.totalTumbleWin || 0), 0);
         return totalWins / totalBets;
     }
     /**
