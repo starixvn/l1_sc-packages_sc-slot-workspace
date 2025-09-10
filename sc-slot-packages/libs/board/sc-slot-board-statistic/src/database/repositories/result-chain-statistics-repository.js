@@ -15,7 +15,7 @@ export class ResultChainStatisticsRepository {
                 actualRTP: resultChain.rtpResult.actualRTP,
                 rtpVariance: Math.abs(resultChain.rtpResult.actualRTP - resultChain.config.targetRTP),
                 totalWagered: resultChain.config.betSize * resultChain.config.boardCount,
-                totalWon: resultChain.boards.reduce((sum, board) => sum + board.totalCascadeWin, 0),
+                totalWon: resultChain.boards.reduce((sum, board) => sum + (board.totalTumbleWin || 0), 0),
                 generationAttempts: resultChain.generationAttempts || 1,
                 generationDuration: resultChain.generationDuration || 0,
                 configJson: resultChain.config,

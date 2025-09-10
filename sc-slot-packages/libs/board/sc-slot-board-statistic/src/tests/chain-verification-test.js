@@ -53,7 +53,7 @@ class ChainVerificationTest {
     analyzeRTP(chain) {
         console.log('💰 RTP ANALYSIS:');
         const totalBet = chain.boards.length * this.betSize;
-        const totalWins = chain.boards.reduce((sum, board) => sum + (board.totalCascadeWin || 0), 0);
+        const totalWins = chain.boards.reduce((sum, board) => sum + (board.totalTumbleWin || 0), 0);
         const calculatedRTP = totalWins / totalBet;
         console.log(`Total Bet Amount: $${totalBet}`);
         console.log(`Total Winnings: $${totalWins.toFixed(2)}`);
@@ -195,7 +195,7 @@ class ChainVerificationTest {
     }
     analyzeMainGame(chain) {
         console.log('🎮 MAIN GAME ANALYSIS:');
-        const winningBoards = chain.boards.filter(board => (board.totalCascadeWin || 0) > 0);
+        const winningBoards = chain.boards.filter(board => (board.totalTumbleWin || 0) > 0);
         const hitFrequency = (winningBoards.length / chain.boards.length * 100).toFixed(1);
         // Win size distribution
         const winSizes = {
@@ -204,7 +204,7 @@ class ChainVerificationTest {
             large: 0, // 5x+ bet
         };
         winningBoards.forEach(board => {
-            const winMultiplier = (board.totalCascadeWin || 0) / this.betSize;
+            const winMultiplier = (board.totalTumbleWin || 0) / this.betSize;
             if (winMultiplier < 1) {
                 winSizes.small++;
             }
@@ -217,17 +217,17 @@ class ChainVerificationTest {
         });
         // Top wins
         const topWins = winningBoards
-            .sort((a, b) => (b.totalCascadeWin || 0) - (a.totalCascadeWin || 0))
+            .sort((a, b) => (b.totalTumbleWin || 0) - (a.totalTumbleWin || 0))
             .slice(0, 5);
         console.log(`Hit Frequency: ${hitFrequency}% (${winningBoards.length}/${chain.boards.length})`);
         console.log(`Win Distribution: Small: ${winSizes.small}, Medium: ${winSizes.medium}, Large: ${winSizes.large}`);
-        console.log(`Average Win (when winning): $${(winningBoards.reduce((sum, board) => sum + (board.totalCascadeWin || 0), 0) / winningBoards.length).toFixed(2)}`);
+        console.log(`Average Win (when winning): $${(winningBoards.reduce((sum, board) => sum + (board.totalTumbleWin || 0), 0) / winningBoards.length).toFixed(2)}`);
         if (topWins.length > 0) {
             console.log('\n💎 TOP WINS:');
             topWins.forEach((board, index) => {
                 const boardIndex = chain.boards.indexOf(board) + 1;
-                const multiplier = ((board.totalCascadeWin || 0) / this.betSize).toFixed(1);
-                console.log(`  ${index + 1}. Board ${boardIndex}: $${(board.totalCascadeWin || 0).toFixed(2)} (${multiplier}x bet)`);
+                const multiplier = ((board.totalTumbleWin || 0) / this.betSize).toFixed(1);
+                console.log(`  ${index + 1}. Board ${boardIndex}: $${(board.totalTumbleWin || 0).toFixed(2)} (${multiplier}x bet)`);
             });
         }
         console.log('');
@@ -235,7 +235,7 @@ class ChainVerificationTest {
     provideAssessment(chain) {
         console.log('🎯 OVERALL ASSESSMENT:');
         const totalBet = chain.boards.length * this.betSize;
-        const totalWins = chain.boards.reduce((sum, board) => sum + (board.totalCascadeWin || 0), 0);
+        const totalWins = chain.boards.reduce((sum, board) => sum + (board.totalTumbleWin || 0), 0);
         const calculatedRTP = totalWins / totalBet;
         const targetRTP = chain.metadata?.targetRTP || 0.97;
         const totalFreeSpinsPlayed = chain.boards.reduce((sum, board) => sum + (board.freeSpinsPlayed || 0), 0);
