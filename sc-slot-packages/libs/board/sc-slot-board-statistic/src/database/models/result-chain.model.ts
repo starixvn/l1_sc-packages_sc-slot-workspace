@@ -4,6 +4,8 @@ import mongoose, { Schema, Document, Model } from 'mongoose';
 export interface IResultChain extends Document {
     name: string;
     boardsData: any[];
+    betLevel: number;
+    coinValue: number;
     createdAt: Date;
 }
 
@@ -26,7 +28,23 @@ const ResultChainSchema = new Schema<IResultChain>({
     boardsData: [{
         type: Schema.Types.Mixed,
         required: true
-    }]
+    }],
+    betLevel: {
+        type: Number,
+        required: true,
+        min: 0.1,
+        max: 10.0,
+        default: 0.5,
+        index: true
+    },
+    coinValue: {
+        type: Number,
+        required: true,
+        min: 0.01,
+        max: 1.0,
+        default: 0.1,
+        index: true
+    }
 }, {
     timestamps: { createdAt: true, updatedAt: false },
     collection: 'result_chains'
@@ -35,6 +53,7 @@ const ResultChainSchema = new Schema<IResultChain>({
 // Simple indexes for performance
 ResultChainSchema.index({ name: 1 });
 ResultChainSchema.index({ createdAt: -1 });
+ResultChainSchema.index({ betLevel: 1, coinValue: 1 }); // For player bet selection
 
 // Static methods
 ResultChainSchema.statics.findByName = function(name: string) {

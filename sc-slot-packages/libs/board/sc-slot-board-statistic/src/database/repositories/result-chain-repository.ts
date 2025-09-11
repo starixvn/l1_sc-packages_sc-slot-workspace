@@ -4,6 +4,8 @@ import { ResultChain, IResultChain } from '../models/result-chain.model';
 export interface CreateResultChainInput {
     name: string;
     boardsData: any[];
+    betLevel: number;
+    coinValue: number;
 }
 
 export interface ResultChainFilter {
@@ -17,12 +19,14 @@ export class ResultChainRepository {
      * Create a new result chain in the database
      */
     async create(input: CreateResultChainInput): Promise<IResultChain> {
-        const { name, boardsData } = input;
+        const { name, boardsData, betLevel, coinValue } = input;
 
         try {
             const chainDoc = new ResultChain({
                 name,
-                boardsData
+                boardsData,
+                betLevel,
+                coinValue
             });
 
             const savedChain = await chainDoc.save();
@@ -202,6 +206,46 @@ export class ResultChainRepository {
             return await ResultChain.countDocuments({});
         } catch (error) {
             console.error('❌ Failed to count result chains:', error);
+            throw error;
+        }
+    }
+
+    /**
+     * Find chains by bet parameters for player selection
+     */
+    async findByBetParams(betLevel: number, coinValue: number, limit: number = 10): Promise<IResultChain[]> {
+        try {
+            return await ResultChain.find({
+                betLevel,
+                coinValue
+            })
+            .sort({ createdAt: -1 })
+            .limit(limit);
+        } catch (error) {
+            console.error('❌ Failed to find result chains by bet params:', error);
+            throw error;
+        }
+    }
+
+    /**
+     * Find chains within bet parameter ranges
+     */
+    async findByBetRange(
+        minBetLevel: number, 
+        maxBetLevel: number, 
+        minCoinValue: number, 
+        maxCoinValue: number, 
+        limit: number = 10
+    ): Promise<IResultChain[]> {
+        try {
+            return await ResultChain.find({
+                betLevel: { $gte: minBetLevel, $lte: maxBetLevel },
+                coinValue: { $gte: minCoinValue, $lte: maxCoinValue }
+            })
+            .sort({ createdAt: -1 })
+            .limit(limit);
+        } catch (error) {
+            console.error('❌ Failed to find result chains by bet range:', error);
             throw error;
         }
     }

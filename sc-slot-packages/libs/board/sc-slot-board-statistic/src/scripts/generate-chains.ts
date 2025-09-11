@@ -50,6 +50,8 @@ interface GenerationConfig {
     tolerance: number;
     outputDir: string;
     betSize: number;
+    betLevel: number;
+    coinValue: number;
 }
 
 async function main() {
@@ -66,6 +68,8 @@ async function main() {
         console.log(`   Patterns: ${config.patterns.join(', ')}`);
         console.log(`   Board Counts: ${config.boardCounts.join(', ')}`);
         console.log(`   Target RTP: ${(config.targetRTP * 100).toFixed(1)}%`);
+        console.log(`   Bet Level: ${config.betLevel}`);
+        console.log(`   Coin Value: $${config.coinValue}`);
         console.log(`   Max Retries: ${config.maxRetries}`);
         console.log(`   Tolerance: ${(config.tolerance * 100).toFixed(1)}%`);
         console.log(`   Output Dir: ${config.outputDir}`);
@@ -103,13 +107,12 @@ async function main() {
                         const filePath = join(config.outputDir, filename);
                         
                         const actualRTP = chainResult.actualRTP || 0;
-                        // Extract bet data from first board (all boards have same bet settings)
-                        const sampleBoard = chainResult.boards[0];
+                        // Create bet data from configuration parameters
                         const betData = {
-                            betLevel: sampleBoard.betLevel || 1,
-                            coinValue: sampleBoard.coinValue || 0.1,
-                            betMultiplier: sampleBoard.betMultiplier || 10,
-                            betAmount: sampleBoard.betAmount || 1
+                            betLevel: config.betLevel,
+                            coinValue: config.coinValue,
+                            betMultiplier: 20, // Standard multiplier
+                            betAmount: config.betSize
                         };
 
                         const chainData = {
@@ -124,7 +127,7 @@ async function main() {
                                 createdBy: config.createdBy,
                                 generatedAt: new Date().toISOString(),
                                 generationStats: chainResult.generationStats,
-                                betData // ✅ Add bet data to metadata
+                                betData // Add bet data to metadata
                             },
                             config: {
                                 boardCount: boardCount,
@@ -133,13 +136,14 @@ async function main() {
                                 playerBudget: boardCount * config.betSize,
                                 difficulty: 'medium',
                                 maxRetries: config.maxRetries,
-                                tolerance: config.tolerance
+                                tolerance: config.tolerance,
+                                betLevel: config.betLevel,
+                                coinValue: config.coinValue
                             },
-                            // ✅ Filter out deprecated fields from boards
+                            // Filter out deprecated fields from boards
                             boards: chainResult.boards.map(board => ({
                                 board: board.board,
                                 multipliers: board.multipliers,
-                                // ❌ Remove: cascadeCount, totalCascadeWin, betLevel, coinValue, betMultiplier, betAmount
                                 isFreeSpin: board.isFreeSpin,
                                 accumulatedMultiplier: board.accumulatedMultiplier,
                                 remainingFreeSpins: board.remainingFreeSpins,
@@ -147,7 +151,7 @@ async function main() {
                                 freeSpinWins: board.freeSpinWins,
                                 freeSpinBoards: board.freeSpinBoards,
                                 settlementResult: board.settlementResult,
-                                totalTumbleWin: board.totalTumbleWin || 0 // ✅ Only include totalTumbleWin
+                                totalTumbleWin: board.totalTumbleWin || 0
                             })),
                             tumbleStats: chainResult.tumbleStats,
                             patternInfo: AVAILABLE_PATTERNS[pattern as keyof typeof AVAILABLE_PATTERNS]
@@ -254,10 +258,26 @@ function parseArguments(args: string[]): GenerationConfig {
     // Positional arguments (like test-pattern scripts)
     const boardCount = args[0] ? parseInt(args[0], 10) : 125;
     const patternsInput = args[1] || 'comeback,cliffhanger,discovery,tease,wave';
+    const betLevel = args[2] ? parseFloat(args[2]) : 0.5;
+    const coinValue = args[3] ? parseFloat(args[3]) : 0.1;
     
     // Validate board count
     if (isNaN(boardCount) || boardCount < 100 || boardCount > 150) {
         console.error(`❌ Error: Board count must be between 100-150, got: ${boardCount}`);
+        showHelp();
+        process.exit(1);
+    }
+
+    // Validate betLevel
+    if (isNaN(betLevel) || betLevel < 0.1 || betLevel > 10.0) {
+        console.error(`❌ Error: Bet level must be between 0.1-10.0, got: ${betLevel}`);
+        showHelp();
+        process.exit(1);
+    }
+
+    // Validate coinValue
+    if (isNaN(coinValue) || coinValue < 0.01 || coinValue > 1.0) {
+        console.error(`❌ Error: Coin value must be between 0.01-1.0, got: ${coinValue}`);
         showHelp();
         process.exit(1);
     }
@@ -281,7 +301,9 @@ function parseArguments(args: string[]): GenerationConfig {
         maxRetries: 10,
         tolerance: 0.02,
         outputDir: './chain-output',
-        betSize: 1.0
+        betSize: 1.0,
+        betLevel,
+        coinValue
     };
 }
 
@@ -289,14 +311,17 @@ function showHelp(): void {
     console.log(`
 Enhanced Chain Generation Script (JSON Output)
 
-Usage: npm run generate-chains [boardCount] [patterns]
+Usage: npm run generate-chains [boardCount] [patterns] [betLevel] [coinValue]
 
 Arguments:
   boardCount    Number of boards per chain (100-150, default: 125)
   patterns      Comma-separated pattern types (default: all patterns)
+  betLevel      Bet level multiplier (0.1-10.0, default: 0.5)
+  coinValue     Coin value in currency (0.01-1.0, default: 0.1)
 
 Examples:
-  npm run generate-chains                           # Generate all patterns with 125 boards
+  npm run generate-chains                           # Generate all patterns with defaults (125 boards, 0.5 bet level, 0.1 coin value)
+  npm run generate-chains 100 tease 1.0 0.05       # Generate tease pattern with 100 boards, bet level 1.0, coin value 0.05
   npm run generate-chains 100                      # Generate all patterns with 100 boards  
   npm run generate-chains 125 comeback             # Generate comeback pattern with 125 boards
   npm run generate-chains 150 comeback,wave        # Generate comeback & wave with 150 boards
@@ -359,7 +384,9 @@ async function generateChain(patternType: string, boardCount: number, config: Ge
             playerBudget: boardCount * config.betSize,
             difficulty: Difficulty.Medium,
             maxRetries: config.maxRetries,
-            tolerance: config.tolerance
+            tolerance: config.tolerance,
+            betLevel: config.betLevel,
+            coinValue: config.coinValue
         });
 
         const executionTime = Date.now() - startTime;

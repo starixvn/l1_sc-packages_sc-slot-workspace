@@ -17,6 +17,8 @@ export interface IResultChainStatistics extends Document {
     generationStats: any;
     status: 'active' | 'archived' | 'testing';
     createdBy?: string;
+    betLevel: number;
+    coinValue: number;
     createdAt: Date;
     
     // Instance methods
@@ -119,6 +121,22 @@ const ResultChainStatisticsSchema = new Schema<IResultChainStatistics>({
         type: String,
         trim: true,
         maxlength: 255
+    },
+    betLevel: {
+        type: Number,
+        required: true,
+        min: 0.1,
+        max: 10.0,
+        default: 0.5,
+        index: true
+    },
+    coinValue: {
+        type: Number,
+        required: true,
+        min: 0.01,
+        max: 1.0,
+        default: 0.1,
+        index: true
     }
 }, {
     timestamps: { createdAt: true, updatedAt: false },
@@ -129,6 +147,7 @@ const ResultChainStatisticsSchema = new Schema<IResultChainStatistics>({
 ResultChainStatisticsSchema.index({ patternType: 1, actualRTP: -1 });
 ResultChainStatisticsSchema.index({ status: 1, createdAt: -1 });
 ResultChainStatisticsSchema.index({ boardCount: 1, targetRTP: 1 });
+ResultChainStatisticsSchema.index({ betLevel: 1, coinValue: 1 }); // Bet parameters index
 ResultChainStatisticsSchema.index({ resultChainName: 'text' }); // Text search
 
 // Virtual properties
@@ -164,6 +183,8 @@ ResultChainStatisticsSchema.methods.getSummary = function(this: IResultChainStat
         targetRTP: `${(this.targetRTP * 100).toFixed(1)}%`,
         actualRTP: `${(this.actualRTP * 100).toFixed(2)}%`,
         variance: `${(this.rtpVariance * 100).toFixed(2)}%`,
+        betLevel: this.betLevel,
+        coinValue: this.coinValue,
         status: this.status,
         withinTolerance,
         createdAt: this.createdAt

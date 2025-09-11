@@ -17,6 +17,8 @@ export interface ResultChainConfig {
     difficulty: Difficulty; // Game difficulty
     maxRetries: number; // Max attempts to generate valid chain
     tolerance: number; // RTP tolerance (±%)
+    betLevel?: number; // Bet level multiplier (0.1-10.0, default: 0.5)
+    coinValue?: number; // Coin value in currency (0.01-1.0, default: 0.1)
 }
 
 export interface ResultChain {
@@ -165,7 +167,7 @@ export class ResultChainOrchestrator {
             const shouldWin = this.rtpController.shouldNextBoardWin(boards);
             const targetWinSize = shouldWin ? this.rtpController.getTargetWinSize(boards) : 0;
 
-            const boardResult = await this.generateSingleBoard(targetWinSize, config.betSize, i);
+            const boardResult = await this.generateSingleBoard(targetWinSize, config.betSize, i, config);
             boards.push(boardResult);
 
             // Adjust strategy if we're drifting from target
@@ -185,7 +187,7 @@ export class ResultChainOrchestrator {
     /**
      * Generate a single board with settlement processing
      */
-    private async generateSingleBoard(targetWin: number, betSize: number, boardId: number): Promise<BoardResult> {
+    private async generateSingleBoard(targetWin: number, betSize: number, boardId: number, config: ResultChainConfig): Promise<BoardResult> {
         const maxAttempts = 50;
         let bestBoard: BoardResult | null = null;
         let bestDistance = Infinity;
@@ -195,17 +197,20 @@ export class ResultChainOrchestrator {
         for (let attempt = 0; attempt < maxAttempts; attempt++) {
             const initialBoard = boardGenerator.generate();
             
-            // Create round for settlement processing (same format as statistic-runner)
-            const coinValue = 0.1;
-            const betMultiplier = 20;
-            const betLevel = betSize / (coinValue * betMultiplier); // For $20 bet: 20 / (0.1 * 20) = 10
+            // Create round for settlement processing using config bet parameters
+            const coinValue = config.coinValue || 0.1;
+            const betLevel = config.betLevel || 0.5;
+            const betMultiplier = 20; // Standard multiplier
+            
+            // Use actual config values for the round
+            const totalAmount = coinValue * betLevel * betMultiplier;
             
             const round: Round = {
                 id: boardId,
                 coinValue,
                 betLevel,
                 betMultiplier,
-                totalAmount: coinValue * betLevel * betMultiplier, // 0.1 * 10 * 20 = 20 ✓
+                totalAmount: totalAmount, // Use calculated bet size with correct parameters
                 odds: {
                     oddsByCounts: Object.assign({}, defaultOdds.normalSymbols.map(prop("payout"))),
                     freeSpins: defaultOdds.freeSpins,
@@ -267,6 +272,18 @@ export class ResultChainOrchestrator {
                 totalWin += freeSpinWins;
             }
 
+            // Insert initial board tumble at the beginning for game service consumption  
+            if (tumbles.length > 0 && (round.totalTumbleWin || totalWin) > 0) {
+                const initialTumble = {
+                    icons: {},
+                    originalBoard: initialBoard.newBoard.join(','),
+                    newBoard: initialBoard.newBoard.join(','), 
+                    multipliers: initialBoard.multipliers || [],
+                    win: 0
+                };
+                tumbles.unshift(initialTumble); // Insert at beginning
+            }
+
             return {
                 board: initialBoard.newBoard,
                 multipliers: initialBoard.multipliers,
@@ -280,7 +297,7 @@ export class ResultChainOrchestrator {
                 freeSpinWins,
                 freeSpinBoards: freeSpinBoardSequence.length > 0 ? freeSpinBoardSequence : undefined,
                 settlementResult: {
-                    tumbles: tumbles, // ✅ Use external calculator's correct tumbles data
+                    tumbles: tumbles, // ✅ Use modified tumbles with initial board included
                     freeSpins: round.settlementResult?.freeSpins || { count: 0, odds: 0 },
                     additionalFreeSpins: round.settlementResult?.additionalFreeSpins || { count: 0, odds: 0 }
                 },
@@ -442,6 +459,7 @@ export class ResultChainOrchestrator {
                 win: tumbleWin
             };
             
+            
             tumbles.push(tumbleData);
             
             // Update board state for next tumble
@@ -475,6 +493,7 @@ export class ResultChainOrchestrator {
         
         return winSymbols;
     }
+
 
     /**
      * Calculate win amount for a tumble based on winning symbols
@@ -716,13 +735,12 @@ export class ResultChainOrchestrator {
      * Export result chain to JSON
      */
     exportResultChainToJSON(chain: ResultChain): string {
-        // Extract bet data from first board (all boards have same bet settings)
-        const sampleBoard = chain.boards[0];
+        // Use bet parameters from chain config (supports custom betLevel and coinValue)
         const betData = {
-            betLevel: sampleBoard.betLevel || 1,
-            coinValue: sampleBoard.coinValue || 0.1, 
-            betMultiplier: sampleBoard.betMultiplier || 10,
-            betAmount: sampleBoard.betAmount || 1
+            betLevel: chain.config.betLevel || 0.5,
+            coinValue: chain.config.coinValue || 0.1, 
+            betMultiplier: 20, // Standard multiplier
+            betAmount: chain.config.betSize || 1
         };
 
         const exportData = {

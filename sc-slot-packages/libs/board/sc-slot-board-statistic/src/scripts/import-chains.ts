@@ -296,7 +296,9 @@ async function importSingleFile(
         // Prepare simplified chain input for main collection
         const chainInput: CreateResultChainInput = {
             name: metadata.name,
-            boardsData: chainData.boards
+            boardsData: chainData.boards,
+            betLevel: metadata.betData?.betLevel || chainData.config?.betLevel || 0.5,
+            coinValue: metadata.betData?.coinValue || chainData.config?.coinValue || 0.1
         };
         
         // Insert main chain record into database

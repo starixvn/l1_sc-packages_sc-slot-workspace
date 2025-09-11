@@ -49,6 +49,8 @@ export class ResultChainStatisticsRepository {
                 configJson: resultChain.config,
                 tumbleStats: resultChain.tumbleStats,
                 generationStats: (resultChain as any).generationStats || {},
+                betLevel: (resultChain as any).metadata?.betData?.betLevel || 0.5,
+                coinValue: (resultChain as any).metadata?.betData?.coinValue || 0.1,
                 status,
                 createdBy
             });

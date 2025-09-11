@@ -5,11 +5,13 @@ export class ResultChainRepository {
      * Create a new result chain in the database
      */
     async create(input) {
-        const { name, boardsData } = input;
+        const { name, boardsData, betLevel, coinValue } = input;
         try {
             const chainDoc = new ResultChain({
                 name,
-                boardsData
+                boardsData,
+                betLevel,
+                coinValue
             });
             const savedChain = await chainDoc.save();
             console.log(`✅ Result chain created: ${savedChain.name} (ID: ${savedChain._id})`);
@@ -178,6 +180,40 @@ export class ResultChainRepository {
         }
         catch (error) {
             console.error('❌ Failed to count result chains:', error);
+            throw error;
+        }
+    }
+    /**
+     * Find chains by bet parameters for player selection
+     */
+    async findByBetParams(betLevel, coinValue, limit = 10) {
+        try {
+            return await ResultChain.find({
+                betLevel,
+                coinValue
+            })
+                .sort({ createdAt: -1 })
+                .limit(limit);
+        }
+        catch (error) {
+            console.error('❌ Failed to find result chains by bet params:', error);
+            throw error;
+        }
+    }
+    /**
+     * Find chains within bet parameter ranges
+     */
+    async findByBetRange(minBetLevel, maxBetLevel, minCoinValue, maxCoinValue, limit = 10) {
+        try {
+            return await ResultChain.find({
+                betLevel: { $gte: minBetLevel, $lte: maxBetLevel },
+                coinValue: { $gte: minCoinValue, $lte: maxCoinValue }
+            })
+                .sort({ createdAt: -1 })
+                .limit(limit);
+        }
+        catch (error) {
+            console.error('❌ Failed to find result chains by bet range:', error);
             throw error;
         }
     }
