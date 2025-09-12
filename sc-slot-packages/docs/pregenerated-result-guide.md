@@ -4,24 +4,25 @@
 
 The `preGeneratedResult` array provides pre-calculated cascading slot data to `RoundCalculator.processSpinning()`. This guide explains how to structure this data correctly.
 
-## Key Rule: N+1 Array Items for N Tumbles
+## Key Rule: N Array Items for N Tumbles
 
-**Critical**: To generate N final tumbles, you need N+1 items in the `preGeneratedResult` array.
+**Critical**: To generate N final tumbles, you need exactly N items in the `preGeneratedResult` array.
 
 ```javascript
-// For 2 tumbles in final result → Need 3 array items
-// For 3 tumbles in final result → Need 4 array items
+// For 2 tumbles in final result → Need 2 array items
+// For 3 tumbles in final result → Need 3 array items
 // etc.
 ```
 
 ## Data Structure Template
 
 ```javascript
+// Example: 2 tumbles = 2 array items
 const preGeneratedResult = [
-  // Item 1: Creates firstTumble
+  // Item 1: Creates first tumble (must have winning combination to cascade)
   {
     newBoard: [
-      /* 30 integers for 6x5 board */
+      /* 30 integers for 6x5 board with winning symbols */
     ],
     multipliers: [
       /* multiplier values */
@@ -31,60 +32,26 @@ const preGeneratedResult = [
     newSymbols: [], // Not used for tumble creation
   },
 
-  // Item 2: Provides explodedSymbols/newSymbols for firstTumble
+  // Item 2: Provides explodedSymbols to first tumble AND creates second tumble (no wins)
   {
     newBoard: [
-      /* board after first cascade */
+      /* board after cascade - becomes second tumble (should have NO wins) */
     ],
     multipliers: [
       /* carried forward */
     ],
     icons: {},
     explodedSymbols: [
-      /* what exploded in first tumble */
+      /* what exploded in first tumble (goes TO first tumble) */
     ],
     newSymbols: [
-      /* what dropped in first tumble */
+      /* what dropped in first tumble (goes TO first tumble) */
     ],
-  },
-
-  // Item 3: Provides explodedSymbols/newSymbols for secondTumble
-  // OR stops cascade if arrays are empty
-  {
-    newBoard: [
-      /* final board state */
-    ],
-    multipliers: [
-      /* carried forward */
-    ],
-    icons: {},
-    explodedSymbols: [], // Empty = no more cascades
-    newSymbols: [], // Empty = cascade stops
   },
 ];
-```
 
-## Array Consumption Flow
-
-```javascript
-// RoundCalculator.processSpinning() consumes data like this:
-
-// Step 1: Create first tumble
-const generatedResult = preGeneratedResult.shift(); // Uses item 1
-// → firstTumble created with generatedResult.newBoard
-
-// Step 2: Process first tumble cascade (if wins found)
-const refilledResult = preGeneratedResult.shift(); // Uses item 2
-// → firstTumble.explodedSymbols = refilledResult.explodedSymbols
-// → firstTumble.newSymbols = refilledResult.newSymbols
-
-// Step 3: Create second tumble
-// → secondTumble created with refilledResult.newBoard
-
-// Step 4: Process second tumble cascade (if wins found)
-const refilledResult = preGeneratedResult.shift(); // Uses item 3
-// → secondTumble.explodedSymbols = refilledResult.explodedSymbols
-// → If explodedSymbols is empty → cascade stops
+// Key insight: Only WINNING tumbles get explodedSymbols
+// The LAST tumble never gets explodedSymbols (that's what stops the cascade)
 ```
 
 ## Data Format Requirements
@@ -123,13 +90,8 @@ const preGeneratedResult = [
     explodedSymbols: [],
     newSymbols: [],
   },
-  {
-    newBoard: [1, 2, 3, 4, 5, 6, 7, 8, 0, 1, 2, 3, 4, 5, 6, 7, 8, 0, 1, 2, 3, 4, 5, 6, 7, 8, 0, 1, 2, 3],
-    multipliers: [1],
-    icons: {},
-    explodedSymbols: [], // Empty = no cascade
-    newSymbols: [], // Empty = no cascade
-  },
+  // Only 1 item needed for 1 tumble
+  // settleTumble will return false (no wins), so no cascade occurs
 ];
 ```
 
@@ -137,7 +99,35 @@ const preGeneratedResult = [
 
 ```javascript
 const preGeneratedResult = [
-  // Creates first tumble with winning 8's
+  // Item 1: Creates first tumble with winning 8's
+  {
+    newBoard: [8, 8, 8, 1, 2, 3, 4, 5, 6, 7, 0, 1, 2, 3, 4, 5, 6, 7, 8, 0, 1, 2, 3, 4, 5, 6, 7, 8, 0, 1],
+    multipliers: [1],
+    icons: {},
+    explodedSymbols: [], // Not used for tumble creation
+    newSymbols: [], // Not used for tumble creation
+  },
+
+  // Item 2: Provides explodedSymbols to first tumble AND creates second tumble (no wins)
+  {
+    newBoard: [4, 5, 6, 1, 2, 3, 4, 5, 6, 7, 0, 1, 2, 3, 4, 5, 6, 7, 8, 0, 1, 2, 3, 4, 5, 6, 7, 8, 0, 1],
+    multipliers: [1],
+    icons: {},
+    explodedSymbols: [8, 8, 8, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1],
+    newSymbols: [4, 5, 6, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1],
+  },
+];
+
+// Result:
+// - First tumble gets explodedSymbols (it was a winner)
+// - Second tumble gets NO explodedSymbols (cascade stops because it has no wins)
+```
+
+### Three Tumbles (Two Cascades)
+
+```javascript
+const preGeneratedResult = [
+  // Item 1: Creates first tumble with winning 8's
   {
     newBoard: [8, 8, 8, 1, 2, 3, 4, 5, 6, 7, 0, 1, 2, 3, 4, 5, 6, 7, 8, 0, 1, 2, 3, 4, 5, 6, 7, 8, 0, 1],
     multipliers: [1],
@@ -146,59 +136,58 @@ const preGeneratedResult = [
     newSymbols: [],
   },
 
-  // Provides cascade data for first tumble
+  // Item 2: Provides explodedSymbols to first tumble AND creates second tumble (also has wins!)
   {
-    newBoard: [4, 5, 6, 1, 2, 3, 4, 5, 6, 7, 0, 1, 2, 3, 4, 5, 6, 7, 8, 0, 1, 2, 3, 4, 5, 6, 7, 8, 0, 1],
+    newBoard: [7, 7, 7, 1, 2, 3, 4, 5, 6, 7, 0, 1, 2, 3, 4, 5, 6, 7, 8, 0, 1, 2, 3, 4, 5, 6, 7, 8, 0, 1],
     multipliers: [1],
     icons: {},
     explodedSymbols: [8, 8, 8, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1],
-    newSymbols: [4, 5, 6, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1],
+    newSymbols: [7, 7, 7, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1],
   },
 
-  // Stops cascade (no more wins)
+  // Item 3: Provides explodedSymbols to second tumble AND creates third tumble (no wins)
   {
-    newBoard: [4, 5, 6, 1, 2, 3, 4, 5, 6, 7, 0, 1, 2, 3, 4, 5, 6, 7, 8, 0, 1, 2, 3, 4, 5, 6, 7, 8, 0, 1],
+    newBoard: [1, 2, 3, 1, 2, 3, 4, 5, 6, 7, 0, 1, 2, 3, 4, 5, 6, 7, 8, 0, 1, 2, 3, 4, 5, 6, 7, 8, 0, 1],
     multipliers: [1],
     icons: {},
-    explodedSymbols: [], // Empty = stops cascade
-    newSymbols: [], // Empty = stops cascade
+    explodedSymbols: [7, 7, 7, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1],
+    newSymbols: [1, 2, 3, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1],
   },
 ];
+
+// Result:
+// - First tumble gets explodedSymbols from Item 2 (it was a winner)
+// - Second tumble gets explodedSymbols from Item 3 (it was a winner)
+// - Third tumble gets NO explodedSymbols (cascade stops because it has no wins)
 ```
-
-## Common Mistakes to Avoid
-
-❌ **Wrong**: Same number of items as expected tumbles  
-✅ **Correct**: One extra item (N+1 for N tumbles)
-
-❌ **Wrong**: Putting explodedSymbols in first array item  
-✅ **Correct**: explodedSymbols go in the NEXT array item
-
-❌ **Wrong**: Non-empty arrays in final item  
-✅ **Correct**: Final item should have empty explodedSymbols/newSymbols arrays
 
 ## Validation Checklist
 
-- [ ] Array length = expected_tumbles + 1
+- [ ] Array length = expected_tumbles (exactly N items for N tumbles)
 - [ ] All newBoard arrays have exactly 30 integers
 - [ ] explodedSymbols/newSymbols have 30 elements OR are empty arrays
-- [ ] Final item has empty explodedSymbols and newSymbols arrays
+- [ ] First item has empty explodedSymbols/newSymbols (not used for tumble creation)
+- [ ] Items 2 to N should have explodedSymbols data (goes to previous winning tumbles)
+- [ ] Last item should create a non-winning tumble (to stop cascade)
 - [ ] Board symbols are valid (0-10 range)
 - [ ] multipliers array is not empty (at least [1])
 
-## Testing Your Data
+## Key Insights Summary
 
-```javascript
-// Quick validation function
-function validatePreGeneratedResult(data, expectedTumbles) {
-  console.assert(data.length === expectedTumbles + 1, "Wrong array length");
-  console.assert(data[data.length - 1].explodedSymbols.length === 0, "Final item should stop cascade");
-  data.forEach((item, i) => {
-    console.assert(item.newBoard.length === 30, `Item ${i}: wrong board size`);
-    console.assert(item.multipliers.length > 0, `Item ${i}: empty multipliers`);
-  });
-  console.log("Validation passed!");
-}
+🎯 **The Golden Rules:**
+
+1. **N Items = N Tumbles**: For N final tumbles, you need exactly N items in preGeneratedResult
+2. **Only Winners Get explodedSymbols**: Only tumbles with winning combinations get explodedSymbols assigned
+3. **Last Tumble Never Wins**: The final tumble must have no wins to stop the cascade
+4. **explodedSymbols Flow**: Item N+1 provides explodedSymbols to tumble N (if tumble N won)
+
+🔄 **The Pattern:**
+
+```
+Item 1 → Creates Tumble 1 (winner)
+Item 2 → explodedSymbols to Tumble 1 + Creates Tumble 2 (winner)
+Item 3 → explodedSymbols to Tumble 2 + Creates Tumble 3 (no wins)
+Result: 3 tumbles, only first 2 have explodedSymbols
 ```
 
 This structure ensures smooth integration with `RoundCalculator.processSpinning()` and proper cascade behavior.
@@ -206,57 +195,6 @@ This structure ensures smooth integration with `RoundCalculator.processSpinning(
 ## Testing Utilities
 
 For testing and debugging `preGeneratedResult` data, use the utilities in `src/board/pregeneratedresult-utils.js`:
-
-### Quick Testing Methods
-
-```javascript
-import { copyFirstBoardForTesting, createWorkingCopy, peekFirstBoard, logBoardStructure, simulateConsumption } from "../pregeneratedresult-utils";
-
-// Method 1: Copy first board for inspection (preserves original)
-const { firstBoardCopy } = copyFirstBoardForTesting(preGeneratedResult);
-console.log("First board:", firstBoardCopy.newBoard);
-
-// Method 2: Peek at first board without consuming
-const firstBoard = peekFirstBoard(preGeneratedResult);
-console.log("Winning symbols:", firstBoard.newBoard.slice(0, 3));
-
-// Method 3: Create working copy that can be consumed
-const workingCopy = createWorkingCopy(preGeneratedResult);
-const item1 = workingCopy.shift(); // Safe to consume
-const item2 = workingCopy.shift(); // Original untouched
-
-// Method 4: Simulate complete processSpinning consumption
-const result = simulateConsumption(preGeneratedResult);
-console.log("Expected tumbles:", result.expectedTumbles);
-
-// Method 5: Log detailed structure for debugging
-logBoardStructure(preGeneratedResult, "My Test Data");
-```
-
-### Testing Workflow Example
-
-```javascript
-// Complete testing workflow
-describe("Testing My Chain Data", () => {
-  it("should process correctly", () => {
-    // 1. Inspect structure
-    const isValid = logBoardStructure(myPreGeneratedResult);
-    expect(isValid).toBe(true);
-
-    // 2. Simulate behavior
-    const simulation = simulateConsumption(myPreGeneratedResult);
-    expect(simulation.expectedTumbles).toBe(2); // Expected result
-
-    // 3. Test specific properties
-    const firstBoard = peekFirstBoard(myPreGeneratedResult);
-    expect(firstBoard.newBoard[0]).toBe(8); // First symbol should be 8
-
-    // 4. Create working copy for actual testing
-    const workingCopy = createWorkingCopy(myPreGeneratedResult);
-    // ... use workingCopy with actual processSpinning calls
-  });
-});
-```
 
 These utilities allow you to:
 

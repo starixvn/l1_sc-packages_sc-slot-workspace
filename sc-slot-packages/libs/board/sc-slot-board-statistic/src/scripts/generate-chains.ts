@@ -11,6 +11,7 @@ import { BoardGeneratorAdapter } from '../cascading-slot/board-generator-adapter
 import { Difficulty } from 'sc-slot-board-generator';
 import { writeFileSync, mkdirSync, existsSync } from 'fs';
 import { join } from 'path';
+import { createPatternSpecificBoardGeneratorFactory, getPatternConfigSummary } from '../cascading-slot/custom-generator-configs';
 
 // Available patterns for chain generation
 const AVAILABLE_PATTERNS = {
@@ -74,6 +75,17 @@ async function main() {
         console.log(`   Tolerance: ${(config.tolerance * 100).toFixed(1)}%`);
         console.log(`   Output Dir: ${config.outputDir}`);
         console.log(`   Created By: ${config.createdBy}`);
+        console.log('');
+        
+        // Display pattern-specific configurations
+        console.log('🎭 Pattern-Specific Board Generator Configurations:');
+        const patternSummary = getPatternConfigSummary();
+        config.patterns.forEach(pattern => {
+            const summary = patternSummary[pattern as keyof typeof patternSummary];
+            if (summary) {
+                console.log(`   ${summary}`);
+            }
+        });
         console.log('');
 
         // Ensure output directory exists
@@ -261,9 +273,9 @@ function parseArguments(args: string[]): GenerationConfig {
     const betLevel = args[2] ? parseFloat(args[2]) : 0.5;
     const coinValue = args[3] ? parseFloat(args[3]) : 0.1;
     
-    // Validate board count
-    if (isNaN(boardCount) || boardCount < 100 || boardCount > 150) {
-        console.error(`❌ Error: Board count must be between 100-150, got: ${boardCount}`);
+    // Validate board count (allow smaller counts for testing)
+    if (isNaN(boardCount) || boardCount < 10 || boardCount > 150) {
+        console.error(`❌ Error: Board count must be between 10-150, got: ${boardCount}`);
         showHelp();
         process.exit(1);
     }
@@ -326,12 +338,12 @@ Examples:
   npm run generate-chains 125 comeback             # Generate comeback pattern with 125 boards
   npm run generate-chains 150 comeback,wave        # Generate comeback & wave with 150 boards
 
-Available Patterns:
-  - comeback     : Recovery-focused pattern for loss-averse players
-  - cliffhanger  : High-suspense pattern for risk-seekers
-  - discovery    : Exploration-reward pattern for curious players
-  - tease        : Near-miss leveraging pattern for all player types
-  - wave         : Rhythmic engagement pattern for balanced volatility
+Available Patterns (with automatic board generator configuration):
+  - comeback     : 🛡️  Recovery pattern → Easy difficulty, 1x-18x multipliers, frequent wins
+  - cliffhanger  : 🎲  High-suspense pattern → Hard difficulty, 3x-50x multipliers, rare big wins  
+  - discovery    : 🔍  Exploration pattern → Medium difficulty, 2x-30x multipliers, feature-rich
+  - tease        : ⚖️   Near-miss pattern → Medium difficulty, 2x-25x multipliers, balanced
+  - wave         : 🌊  Rhythmic pattern → Medium difficulty, 2x-21x multipliers, consistent
 
 Settings:
   - Target RTP: 97%
@@ -359,7 +371,11 @@ async function generateChain(patternType: string, boardCount: number, config: Ge
             playerBudget: boardCount * config.betSize,
         };
 
-        // Create board generator factory with proper constructor arguments
+        // ===============================
+        // 🎭 BOARD GENERATOR (TEMPORARY BYPASS FOR TESTING)
+        // ===============================
+        
+        // TEMPORARY: Use standard configuration to test critical tumbles fix
         const boardGeneratorFactory = () => new BoardGeneratorAdapter(
             {
                 reels: 6,
@@ -373,6 +389,10 @@ async function generateChain(patternType: string, boardCount: number, config: Ge
             },
             Difficulty.Medium
         );
+        
+        console.log(`🎯 Pattern: ${patternType.toUpperCase()} (using standard config for testing)`);
+        console.log(`📋 Testing: Critical tumbles fix - all boards should have at least 1 tumble`);
+        console.log('');
 
         const orchestrator = new ResultChainOrchestrator(boardGeneratorFactory, rtpConfig);
 

@@ -5,9 +5,9 @@
  * Reuses test-pattern functionality for consistent generation
  */
 import { ResultChainOrchestrator } from '../cascading-slot/result-chain-orchestrator';
-import { BoardGeneratorAdapter } from '../cascading-slot/board-generator-adapter';
 import { writeFileSync, mkdirSync, existsSync } from 'fs';
 import { join } from 'path';
+import { createPatternSpecificBoardGeneratorFactory, getPatternConfigSummary } from '../cascading-slot/custom-generator-configs';
 // Available patterns for chain generation
 const AVAILABLE_PATTERNS = {
     comeback: {
@@ -55,6 +55,16 @@ async function main() {
         console.log(`   Output Dir: ${config.outputDir}`);
         console.log(`   Created By: ${config.createdBy}`);
         console.log('');
+        // Display pattern-specific configurations
+        console.log('🎭 Pattern-Specific Board Generator Configurations:');
+        const patternSummary = getPatternConfigSummary();
+        config.patterns.forEach(pattern => {
+            const summary = patternSummary[pattern];
+            if (summary) {
+                console.log(`   ${summary}`);
+            }
+        });
+        console.log('');
         // Ensure output directory exists
         if (!existsSync(config.outputDir)) {
             mkdirSync(config.outputDir, { recursive: true });
@@ -98,7 +108,7 @@ async function main() {
                                 createdBy: config.createdBy,
                                 generatedAt: new Date().toISOString(),
                                 generationStats: chainResult.generationStats,
-                                betData // ✅ Add bet data to metadata
+                                betData // Add bet data to metadata
                             },
                             config: {
                                 boardCount: boardCount,
@@ -111,11 +121,10 @@ async function main() {
                                 betLevel: config.betLevel,
                                 coinValue: config.coinValue
                             },
-                            // ✅ Filter out deprecated fields from boards
+                            // Filter out deprecated fields from boards
                             boards: chainResult.boards.map(board => ({
                                 board: board.board,
                                 multipliers: board.multipliers,
-                                // ❌ Remove: cascadeCount, totalCascadeWin, betLevel, coinValue, betMultiplier, betAmount
                                 isFreeSpin: board.isFreeSpin,
                                 accumulatedMultiplier: board.accumulatedMultiplier,
                                 remainingFreeSpins: board.remainingFreeSpins,
@@ -123,7 +132,7 @@ async function main() {
                                 freeSpinWins: board.freeSpinWins,
                                 freeSpinBoards: board.freeSpinBoards,
                                 settlementResult: board.settlementResult,
-                                totalTumbleWin: board.totalTumbleWin || 0 // ✅ Only include totalTumbleWin
+                                totalTumbleWin: board.totalTumbleWin || 0
                             })),
                             tumbleStats: chainResult.tumbleStats,
                             patternInfo: AVAILABLE_PATTERNS[pattern]
@@ -221,9 +230,9 @@ function parseArguments(args) {
     const patternsInput = args[1] || 'comeback,cliffhanger,discovery,tease,wave';
     const betLevel = args[2] ? parseFloat(args[2]) : 0.5;
     const coinValue = args[3] ? parseFloat(args[3]) : 0.1;
-    // Validate board count
-    if (isNaN(boardCount) || boardCount < 100 || boardCount > 150) {
-        console.error(`❌ Error: Board count must be between 100-150, got: ${boardCount}`);
+    // Validate board count (allow smaller counts for testing)
+    if (isNaN(boardCount) || boardCount < 10 || boardCount > 150) {
+        console.error(`❌ Error: Board count must be between 10-150, got: ${boardCount}`);
         showHelp();
         process.exit(1);
     }
@@ -280,12 +289,12 @@ Examples:
   npm run generate-chains 125 comeback             # Generate comeback pattern with 125 boards
   npm run generate-chains 150 comeback,wave        # Generate comeback & wave with 150 boards
 
-Available Patterns:
-  - comeback     : Recovery-focused pattern for loss-averse players
-  - cliffhanger  : High-suspense pattern for risk-seekers
-  - discovery    : Exploration-reward pattern for curious players
-  - tease        : Near-miss leveraging pattern for all player types
-  - wave         : Rhythmic engagement pattern for balanced volatility
+Available Patterns (with automatic board generator configuration):
+  - comeback     : 🛡️  Recovery pattern → Easy difficulty, 1x-18x multipliers, frequent wins
+  - cliffhanger  : 🎲  High-suspense pattern → Hard difficulty, 3x-50x multipliers, rare big wins  
+  - discovery    : 🔍  Exploration pattern → Medium difficulty, 2x-30x multipliers, feature-rich
+  - tease        : ⚖️   Near-miss pattern → Medium difficulty, 2x-25x multipliers, balanced
+  - wave         : 🌊  Rhythmic pattern → Medium difficulty, 2x-21x multipliers, consistent
 
 Settings:
   - Target RTP: 97%
@@ -310,16 +319,14 @@ async function generateChain(patternType, boardCount, config) {
             betSize: config.betSize,
             playerBudget: boardCount * config.betSize,
         };
-        // Create board generator factory with proper constructor arguments
-        const boardGeneratorFactory = () => new BoardGeneratorAdapter({
-            reels: 6,
-            symbolsOnReel: 5,
-            numberOfSymbols: 11,
-            numberOfShuffles: 3,
-        }, {
-            min: 2,
-            max: 21,
-        }, 2 /* Difficulty.Medium */);
+        // ===============================
+        // 🎭 PATTERN-SPECIFIC BOARD GENERATOR
+        // ===============================
+        // Automatically configure board generator based on pattern type
+        const boardGeneratorFactory = createPatternSpecificBoardGeneratorFactory(patternType);
+        console.log(`🎯 Pattern: ${patternType.toUpperCase()}`);
+        console.log(`📋 Pattern Info: ${AVAILABLE_PATTERNS[patternType]?.description || 'Unknown pattern'}`);
+        console.log('');
         const orchestrator = new ResultChainOrchestrator(boardGeneratorFactory, rtpConfig);
         // Generate result chain with correct parameters
         const chainResult = await orchestrator.generateResultChain({
