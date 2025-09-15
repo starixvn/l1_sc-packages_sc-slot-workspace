@@ -430,27 +430,25 @@ export class ResultChainOrchestrator {
             betSize
         );
         
-        const tumbles = tumbleProcessingResult.tumbles;
+        
+        let tumbles = tumbleProcessingResult.tumbles;
         const totalWin = tumbleProcessingResult.totalWin;
         
-        // 🎯 CRITICAL FIX: ALL boards need initial tumble for roundCalculator compatibility
-        const initialTumble = {
-            icons: {},
-            originalBoard: initialBoard.newBoard.join(','),  // Use our initial board
-            newBoard: initialBoard.newBoard.join(','),       // Same value (no changes yet)
-            multipliers: initialBoard.multipliers || [],
-            win: 0  // Initial state always has 0 win
-        };
-        
-        // Insert initial tumble for ALL boards (winning AND losing)
-        if (tumbles.length > 0 && totalWin > 0) {
-            // WINNING BOARD: Initial tumble + cascade tumbles
-            tumbles.unshift(initialTumble);
-            console.log(`✅ WINNING BOARD: Generated ${tumbles.length} tumbles (initial + ${tumbles.length - 1} cascades)`);
+        // 🎯 FIX: Follow guide patterns exactly - no extra "initial" tumbles
+        if (tumbles.length === 0 || totalWin === 0) {
+            // Pattern 1: No-win board - single tumble with no cascade data
+            tumbles = [{
+                icons: {},
+                originalBoard: initialBoard.newBoard.join(','),
+                newBoard: initialBoard.newBoard.join(','), // Same as original (no changes)
+                multipliers: initialBoard.multipliers || [],
+                win: 0
+                // No explodedSymbols or newSymbols properties
+            }];
+            console.log(`✅ NO-WIN BOARD: Generated 1 tumble (Pattern 1)`);
         } else {
-            // LOSING BOARD: Only initial tumble with win = 0
-            tumbles.push(initialTumble);
-            console.log(`✅ LOSING BOARD: Generated 1 tumble (initial state, win = 0)`);
+            // Pattern 2: Winning board - final tumble should already be correct from processTumblesWithBoardGenerator
+            console.log(`✅ WINNING BOARD: Generated ${tumbles.length} tumbles (Pattern 2)`);
         }
         
         let freeSpinWins = 0;
@@ -460,7 +458,7 @@ export class ResultChainOrchestrator {
         // Execute free spins if awarded (simplified for internal processing)
         const freeSpinsAwarded = 0; // No free spins for internal processing
         
-        return {
+        const boardResult = {
             board: initialBoard.newBoard,
             multipliers: initialBoard.multipliers,
             payoutResult: undefined,
@@ -484,6 +482,82 @@ export class ResultChainOrchestrator {
             betMultiplier: round.betMultiplier,
             betAmount: (round.coinValue || 0.1) * (round.betLevel || 0.5) * (round.betMultiplier || 20)
         };
+        
+        // 🎯 VALIDATION: Ensure generated data follows guide patterns
+        this.validateTumblePatterns(tumbles, totalWin);
+        
+        return boardResult;
+    }
+
+    /**
+     * Validate that generated tumbles follow the correct patterns from the guide
+     */
+    private validateTumblePatterns(tumbles: any[], totalWin: number): void {
+        if (totalWin === 0) {
+            // Pattern 1: No-win board
+            if (tumbles.length !== 1) {
+                throw new Error(`Pattern 1 violation: No-win board should have exactly 1 tumble, got ${tumbles.length}`);
+            }
+            
+            const tumble = tumbles[0];
+            if (Object.keys(tumble.icons || {}).length > 0) {
+                throw new Error(`Pattern 1 violation: No-win tumble should have empty icons`);
+            }
+            
+            if (tumble.win !== 0) {
+                throw new Error(`Pattern 1 violation: No-win tumble should have win = 0, got ${tumble.win}`);
+            }
+            
+            if (tumble.explodedSymbols || tumble.newSymbols) {
+                throw new Error(`Pattern 1 violation: No-win tumble should not have explodedSymbols or newSymbols`);
+            }
+            
+            if (tumble.originalBoard !== tumble.newBoard) {
+                throw new Error(`Pattern 1 violation: No-win tumble should have identical originalBoard and newBoard`);
+            }
+            
+            console.log(`✅ Pattern 1 validation passed: No-win board with 1 tumble`);
+        } else {
+            // Pattern 2: Winning board with cascades
+            if (tumbles.length < 2) {
+                throw new Error(`Pattern 2 violation: Winning board should have at least 2 tumbles, got ${tumbles.length}`);
+            }
+            
+            // Validate first tumbles (winning tumbles)
+            let totalWinFromTumbles = 0;
+            for (let i = 0; i < tumbles.length - 1; i++) {
+                const tumble = tumbles[i];
+                if (Object.keys(tumble.icons || {}).length === 0) {
+                    throw new Error(`Pattern 2 violation: Winning tumble ${i} should have icons data`);
+                }
+                
+                if (tumble.win <= 0) {
+                    throw new Error(`Pattern 2 violation: Winning tumble ${i} should have win > 0, got ${tumble.win}`);
+                }
+                
+                if (!tumble.explodedSymbols || !tumble.newSymbols) {
+                    throw new Error(`Pattern 2 violation: Winning tumble ${i} should have explodedSymbols and newSymbols`);
+                }
+                
+                totalWinFromTumbles += tumble.win;
+            }
+            
+            // Validate final tumble (no more wins)
+            const finalTumble = tumbles[tumbles.length - 1];
+            if (Object.keys(finalTumble.icons || {}).length > 0) {
+                throw new Error(`Pattern 2 violation: Final tumble should have empty icons`);
+            }
+            
+            if (finalTumble.win !== 0) {
+                throw new Error(`Pattern 2 violation: Final tumble should have win = 0, got ${finalTumble.win}`);
+            }
+            
+            if (finalTumble.explodedSymbols || finalTumble.newSymbols) {
+                throw new Error(`Pattern 2 violation: Final tumble should not have explodedSymbols or newSymbols`);
+            }
+            
+            console.log(`✅ Pattern 2 validation passed: ${tumbles.length} tumbles, total win: ${totalWinFromTumbles}`);
+        }
     }
 
     /**
@@ -580,7 +654,7 @@ export class ResultChainOrchestrator {
     }
 
     /**
-     * Process tumbles using BoardGenerator for correct explodedSymbols generation
+     * Process tumbles using BoardGenerator and convert to proper cascading slot format
      */
     private async processTumblesWithBoardGenerator(
         initialBoard: number[], 
@@ -604,23 +678,28 @@ export class ResultChainOrchestrator {
                 break; // No more wins, stop tumbling
             }
             
-            // Use BoardGenerator.explodeAndRefill for correct processing
+            
+            // Use production BoardGenerator.explodeAndRefill (unchanged)
             const tumbleResult = boardGenerator.explodeAndRefill(
                 currentBoard, 
                 winSymbols, 
                 currentMultipliers
             );
             
+            // ✅ USE BOARDGENERATOR OUTPUT DIRECTLY - Already in correct format
+            // explodedSymbols[i] = -1 (NO_SYMBOL) for not exploded, winning symbol value for exploded
+            
+            
             // Calculate win for this tumble
             const tumbleWin = this.calculateTumbleWin(winSymbols, betSize);
             totalWin += tumbleWin;
             
-            // Create tumble data with correct explodedSymbols from BoardGenerator
+            // Create tumble data with BoardGenerator format (CORRECT)
             const tumbleData = {
                 originalBoard: currentBoard.join(','),
                 newBoard: tumbleResult.newBoard.join(','),
-                explodedSymbols: tumbleResult.explodedSymbols, // ✅ Correct from BoardGenerator!
-                newSymbols: tumbleResult.newSymbols,           // ✅ Correct from BoardGenerator!
+                explodedSymbols: tumbleResult.explodedSymbols,     // ✅ CORRECT: -1 for not exploded, symbol value for exploded
+                newSymbols: tumbleResult.newSymbols,               // ✅ Keep BoardGenerator cascading physics
                 multipliers: tumbleResult.multipliers || [],
                 icons: this.createIconsData(winSymbols, tumbleWin, currentBoard),
                 win: tumbleWin
@@ -632,6 +711,20 @@ export class ResultChainOrchestrator {
             // Update board state for next tumble
             currentBoard = tumbleResult.newBoard;
             currentMultipliers = tumbleResult.multipliers || [];
+        }
+        
+        // 🎯 FIX: Add final tumble for cascading wins (Pattern 2 compliance)
+        if (tumbles.length > 0 && totalWin > 0) {
+            // Add final tumble showing the board state after last cascade with no more wins
+            const finalTumble = {
+                icons: {}, // No more wins
+                originalBoard: currentBoard.join(','),
+                newBoard: currentBoard.join(','), // No further changes
+                multipliers: currentMultipliers,
+                win: 0
+                // No explodedSymbols or newSymbols properties
+            };
+            tumbles.push(finalTumble);
         }
         
         return { tumbles, totalWin };

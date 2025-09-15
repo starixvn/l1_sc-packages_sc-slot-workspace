@@ -4,6 +4,8 @@
 
 The `preGeneratedResult` array provides pre-calculated cascading slot data to `RoundCalculator.processSpinning()`. This guide explains how to structure this data correctly.
 
+**⚠️ IMPORTANT**: This guide covers the **input format** (`preGeneratedResult`) for RoundCalculator. For the **output format** (`settlementResult.tumbles`) that results from processing, see `PREGENERATEDRESULT_COMPATIBLE_GUIDE.md` which contains the corrected patterns that all generated data must follow.
+
 ## Key Rule: N Array Items for N Tumbles
 
 **Critical**: To generate N final tumbles, you need exactly N items in the `preGeneratedResult` array.
@@ -191,6 +193,62 @@ Result: 3 tumbles, only first 2 have explodedSymbols
 ```
 
 This structure ensures smooth integration with `RoundCalculator.processSpinning()` and proper cascade behavior.
+
+## Output Format Compliance
+
+The `preGeneratedResult` input is processed by RoundCalculator to produce `settlementResult.tumbles` output. The output **must** follow these validated patterns:
+
+### Pattern 1: No-Win Boards
+```javascript
+"settlementResult": {
+  "tumbles": [
+    {
+      "icons": {},  // Empty - no wins
+      "originalBoard": "comma,separated,board,state",
+      "newBoard": "comma,separated,board,state", // Same as original
+      "multipliers": [],
+      "win": 0
+      // NO explodedSymbols or newSymbols properties
+    }
+  ]
+}
+```
+
+### Pattern 2: Winning Boards with Cascades  
+```javascript
+"settlementResult": {
+  "tumbles": [
+    // Winning tumbles (1 or more)
+    {
+      "icons": {"0": {"count": 9, "odds": 5, "win": 0.25}}, // Has win data
+      "originalBoard": "initial,board,state",
+      "newBoard": "modified,after,cascade", // Different from original
+      "explodedSymbols": [-1, -1, 0, 0, -1, ...], // Cascade data
+      "newSymbols": [-1, -1, 5, 6, -1, ...],      // Cascade data
+      "multipliers": [18],
+      "win": 5
+    },
+    // Final tumble (always last)
+    {
+      "icons": {}, // Empty - no more wins
+      "originalBoard": "final,board,state",
+      "newBoard": "final,board,state", // Same (no changes)
+      "multipliers": [18],
+      "win": 0
+      // NO explodedSymbols or newSymbols properties
+    }
+  ]
+}
+```
+
+### Validation System
+
+All generated settlement data undergoes comprehensive validation:
+- ✅ **Pattern 1**: No-win boards have exactly 1 tumble with no cascade properties
+- ✅ **Pattern 2**: Winning boards have winning tumbles first, clean final tumble last  
+- ✅ **Property Validation**: Correct presence/absence of explodedSymbols and newSymbols
+- ✅ **Board State Consistency**: Proper originalBoard → newBoard transitions
+- ✅ **Win Calculations**: Positive wins for winning tumbles, zero for final tumbles
 
 ## Testing Utilities
 

@@ -4,6 +4,8 @@
 
 This document outlines the tumble win calculation process in the sc-slot-board-statistic system. The actual calculation logic is handled by external dependencies, while this system consumes and analyzes the results.
 
+**✅ Updated**: This document reflects the **corrected settlement result format** that follows Pattern 1 and Pattern 2 as validated in the current system (September 2025).
+
 ## Architecture
 
 ### External Dependencies
@@ -57,34 +59,83 @@ const calculator = new RoundCalculator({
 
 ## Settlement Result Structure
 
-After processing, the round object contains a `settlementResult` with the following structure:
+After processing, the round object contains a `settlementResult` that follows **two validated patterns**:
 
-### settlementResult Interface
+### Pattern 1: No-Win Boards
+
+For boards with no winning combinations:
 
 ```typescript
-settlementResult?: {
-  tumbles: {
-    icons: Record<string, { count: number; odds: number }>;
-    win: number;
-    originalBoard: string;
-    newBoard: string;
-    multipliers: number[];
-  }[];
+settlementResult: {
+  tumbles: [
+    {
+      icons: {};                    // Empty - no wins
+      originalBoard: string;        // CSV board state  
+      newBoard: string;             // Same as originalBoard
+      multipliers: number[];        
+      win: 0;                       // No win amount
+      // NO explodedSymbols or newSymbols properties
+    }
+  ];
   freeSpins: { count: number; odds: number };
   additionalFreeSpins: { count: number; odds: number };
-};
+}
 ```
 
-### Tumbles Array
+### Pattern 2: Winning Boards with Cascades
 
-Each tumble in the `tumbles` array represents one cascading sequence:
+For boards with winning combinations and cascades:
 
-- **`icons`** - Symbol combinations that created wins in this tumble
-  - Key: Symbol identifier (string)
-  - Value: `{ count: number; odds: number }` - Number of symbols and their payout odds
+```typescript
+settlementResult: {
+  tumbles: [
+    // One or more winning tumbles
+    {
+      icons: Record<string, { count: number; odds: number; win: number }>; // Win data
+      originalBoard: string;        // CSV board state before cascade
+      newBoard: string;             // CSV board state after cascade  
+      explodedSymbols?: number[];   // Array showing exploded positions
+      newSymbols?: number[];        // Array showing replacement symbols
+      multipliers: number[];
+      win: number;                  // Positive win amount
+    },
+    // ... more winning tumbles if cascades continue ...
+    
+    // Final tumble (always last)
+    {
+      icons: {};                    // Empty - no more wins
+      originalBoard: string;        // Final board state
+      newBoard: string;             // Same as originalBoard  
+      multipliers: number[];
+      win: 0;                       // No additional wins
+      // NO explodedSymbols or newSymbols properties
+    }
+  ];
+  freeSpins: { count: number; odds: number };
+  additionalFreeSpins: { count: number; odds: number };
+}
+```
+
+### Critical Pattern Rules
+
+1. **No-Win Boards**: Exactly 1 tumble with empty icons and identical board states
+2. **Winning Boards**: Multiple tumbles where only winning tumbles have exploded/new symbols data
+3. **Final Tumbles**: Always have empty icons and no exploded/new symbols properties
+4. **Board State Flow**: `originalBoard` of tumble N+1 matches `newBoard` of tumble N
+5. **Win Distribution**: Only winning tumbles have `win > 0`, final tumbles always have `win = 0`
+
+### Tumbles Array Properties
+
+Each tumble contains:
+
+- **`icons`** - Symbol combinations that created wins (empty for non-winning tumbles)
+  - Key: Symbol identifier (string)  
+  - Value: `{ count: number; odds: number; win: number }` - Symbol count, payout odds, and win amount
 - **`win`** - Individual payout amount for this specific tumble
 - **`originalBoard`** - Board state before this tumble (comma-separated string)
-- **`newBoard`** - Board state after symbols are removed (comma-separated string)
+- **`newBoard`** - Board state after cascade processing (comma-separated string)
+- **`explodedSymbols`** - *(Winning tumbles only)* Array of 30 integers showing exploded positions (-1 = not exploded, symbol value = exploded)
+- **`newSymbols`** - *(Winning tumbles only)* Array of 30 integers showing replacement symbols (-1 = no change, symbol value = new symbol)
 - **`multipliers`** - Array of multiplier values applied during this tumble
 
 ### Free Spins Data
@@ -234,13 +285,76 @@ if (freeSpinRound.betwin) {
 
 Multipliers accumulate across all free spin rounds and apply to subsequent spins.
 
+## Settlement Result Validation
+
+The system includes comprehensive validation to ensure all settlement data follows the correct patterns:
+
+### Validation Process
+
+All settlement results undergo automatic validation during generation:
+
+```typescript
+// Pattern 1 validation for no-win boards
+if (totalWin === 0) {
+  validateSingleTumble(tumbles);
+  validateEmptyIcons(tumbles[0]);
+  validateNoCascadeProperties(tumbles[0]);
+  validateIdenticalBoards(tumbles[0]);
+}
+
+// Pattern 2 validation for winning boards  
+if (totalWin > 0) {
+  validateMultipleTumbles(tumbles);
+  validateWinningTumbles(tumbles.slice(0, -1));
+  validateFinalTumble(tumbles[tumbles.length - 1]);
+  validateBoardStateFlow(tumbles);
+}
+```
+
+### Validation Rules
+
+#### Pattern 1 Validation:
+- ✅ Exactly 1 tumble in array
+- ✅ Empty icons object `{}`  
+- ✅ Win amount equals 0
+- ✅ No explodedSymbols or newSymbols properties
+- ✅ originalBoard identical to newBoard
+
+#### Pattern 2 Validation:
+- ✅ At least 2 tumbles in array
+- ✅ Winning tumbles have non-empty icons and positive wins
+- ✅ Winning tumbles have explodedSymbols and newSymbols arrays
+- ✅ Final tumble has empty icons and zero win
+- ✅ Final tumble has no explodedSymbols or newSymbols properties
+- ✅ Board state continuity across tumbles
+
+### Error Detection
+
+The validation system catches common issues:
+
+- **❌ Extra Initial Tumbles**: Prevents incorrect "initial state" tumbles
+- **❌ Wrong Tumble Ordering**: Ensures winning tumbles come first
+- **❌ Incorrect Final Tumble**: Validates clean final tumble format  
+- **❌ Missing Cascade Data**: Detects missing exploded/new symbols in winning tumbles
+- **❌ Board State Inconsistency**: Validates proper board transitions
+
+### Validation Success Indicators
+
+Console output shows validation results:
+
+```
+✅ Pattern 1 validation passed: No-win board with 1 tumble
+✅ Pattern 2 validation passed: 3 tumbles, total win: 26
+```
+
 ## Important Notes
 
 1. **External Implementation**: The core calculation logic resides in external packages not present in this codebase
 2. **Data Consumer**: This system primarily consumes and analyzes calculation results
-3. **No Direct Calculation**: The statistic system does not perform tumble calculations directly
-4. **Result Processing**: Focus is on statistical analysis and reporting of external calculation results
-5. **Interface Contracts**: The system relies on the settlementResult interface contract from external calculators
+3. **Validated Output**: All settlement results are validated against Pattern 1/Pattern 2 specifications
+4. **Result Processing**: Focus is on statistical analysis and reporting of validated settlement results
+5. **Interface Contracts**: The system enforces strict adherence to corrected settlementResult format
+6. **Production Ready**: Comprehensive validation ensures data integrity for ChainManager integration
 
 ## Usage in Statistics
 

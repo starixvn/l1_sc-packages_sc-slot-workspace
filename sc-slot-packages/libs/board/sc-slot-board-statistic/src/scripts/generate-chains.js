@@ -5,9 +5,10 @@
  * Reuses test-pattern functionality for consistent generation
  */
 import { ResultChainOrchestrator } from '../cascading-slot/result-chain-orchestrator';
+import { BoardGeneratorAdapter } from '../cascading-slot/board-generator-adapter';
 import { writeFileSync, mkdirSync, existsSync } from 'fs';
 import { join } from 'path';
-import { createPatternSpecificBoardGeneratorFactory, getPatternConfigSummary } from '../cascading-slot/custom-generator-configs';
+import { getPatternConfigSummary } from '../cascading-slot/custom-generator-configs';
 // Available patterns for chain generation
 const AVAILABLE_PATTERNS = {
     comeback: {
@@ -320,12 +321,20 @@ async function generateChain(patternType, boardCount, config) {
             playerBudget: boardCount * config.betSize,
         };
         // ===============================
-        // 🎭 PATTERN-SPECIFIC BOARD GENERATOR
+        // 🎭 BOARD GENERATOR (TEMPORARY BYPASS FOR TESTING)
         // ===============================
-        // Automatically configure board generator based on pattern type
-        const boardGeneratorFactory = createPatternSpecificBoardGeneratorFactory(patternType);
-        console.log(`🎯 Pattern: ${patternType.toUpperCase()}`);
-        console.log(`📋 Pattern Info: ${AVAILABLE_PATTERNS[patternType]?.description || 'Unknown pattern'}`);
+        // TEMPORARY: Use standard configuration to test critical tumbles fix
+        const boardGeneratorFactory = () => new BoardGeneratorAdapter({
+            reels: 6,
+            symbolsOnReel: 5,
+            numberOfSymbols: 11,
+            numberOfShuffles: 3,
+        }, {
+            min: 2,
+            max: 21,
+        }, 2 /* Difficulty.Medium */);
+        console.log(`🎯 Pattern: ${patternType.toUpperCase()} (using standard config for testing)`);
+        console.log(`📋 Testing: Critical tumbles fix - all boards should have at least 1 tumble`);
         console.log('');
         const orchestrator = new ResultChainOrchestrator(boardGeneratorFactory, rtpConfig);
         // Generate result chain with correct parameters
