@@ -11,12 +11,18 @@ Complete guide for generating slot boards using emotional engagement patterns wi
 **Simple 1-step command with built-in validation:**
 
 ```bash
-# Generate chains with automatic pattern validation
+# Single Configuration Mode
 npm run generate-chains [boards] [patterns] [betLevel] [coinValue]
 
+# Multiple Configuration Mode (All bet combinations)
+npm run generate-chains [boards] [patterns] --all-configs
+npm run generate-chains [boards] [patterns] --multi
+
 # Examples:
-npm run generate-chains 10 tease 1 0.1                    # Single pattern
-npm run generate-chains 50 "comeback,cliffhanger" 1 0.1   # Multiple patterns
+npm run generate-chains 10 tease 1 0.1                    # Single pattern, specific bet
+npm run generate-chains 50 "comeback,cliffhanger" 1 0.1   # Multiple patterns, specific bet
+npm run generate-chains 25 tease --all-configs            # Single pattern, all bet combinations
+npm run generate-chains 30 --multi                        # All patterns, all bet combinations
 ```
 
 **✅ Validation is Built-in**: Each generated board is automatically validated during generation:
@@ -24,6 +30,34 @@ npm run generate-chains 50 "comeback,cliffhanger" 1 0.1   # Multiple patterns
 - Pattern 2 compliance for winning boards with cascades  
 - Real-time error detection and correction
 - 100% data integrity guarantee
+
+### 🎰 Bet Configuration System
+
+The system supports comprehensive bet configuration management through a centralized settings file:
+
+#### Available Bet Configurations
+- **Bet Levels**: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10] (multipliers)
+- **Coin Values**: [0.01, 0.05, 0.1, 0.5, 1, 2] (currency units)
+- **Total Combinations**: 60 unique bet configurations
+
+#### Configuration Modes
+
+**Single Configuration Mode:**
+```bash
+npm run generate-chains 100 tease 5 0.5    # Bet Level 5, Coin Value $0.50
+```
+
+**Multiple Configuration Mode:**
+```bash
+npm run generate-chains 50 tease --all-configs    # Generates 60 chains (all bet combinations)
+npm run generate-chains 25 --multi                # All patterns × all bet combinations
+```
+
+#### Bet Settings Management
+All bet configurations are managed in `src/scripts/betSettings.ts`:
+- **Easy Updates**: Modify arrays to add/remove bet levels or coin values
+- **Validation**: Built-in validation for bet configuration compliance
+- **Reusability**: Centralized configuration used across all generation scripts
 
 ### Available Test Scripts
 
@@ -402,17 +436,6 @@ Generated JSON files contain comprehensive test results including configuration,
 
 ### ✅ Fixed Issues (September 2025)
 
-**✅ Data Format Issues - RESOLVED**
-- ❌ ~~Extra "initial tumbles"~~ → ✅ Correct Pattern 1 and Pattern 2 implementation
-- ❌ ~~Wrong tumble ordering~~ → ✅ Winning tumbles first, clean final tumble last
-- ❌ ~~Incorrect cascade properties~~ → ✅ Proper exploded/new symbols handling
-- ❌ ~~Validation missing~~ → ✅ Comprehensive real-time validation
-
-**✅ Pattern Compliance - RESOLVED**  
-- ✅ All 5 patterns generate correct data format
-- ✅ 100% validation pass rate achieved
-- ✅ ChainManager integration compatibility confirmed
-
 ### Common Issues
 
 **Script Not Found**
@@ -458,8 +481,11 @@ npm run verify-chain -- filename.json
 
 ### 1. Quick Validation (Development)
 ```bash
-# Generate chains
-npm run generate-chains 20 tease
+# Generate chains (single bet configuration)
+npm run generate-chains 20 tease 1 0.1
+
+# Generate chains (multiple bet configurations - smaller sample)
+npm run generate-chains 10 tease --all-configs
 
 # Verify chains (mandatory)
 npm run verify-chain
@@ -467,12 +493,15 @@ npm run verify-chain
 # Import to database
 npm run import-chains
 ```
-**Use for**: Code changes, quick functionality check
+**Use for**: Code changes, quick functionality check, bet configuration testing
 
 ### 2. Pattern Testing (Feature Testing)  
 ```bash
-# Generate chains
-npm run generate-chains 50 [pattern]
+# Generate chains (single bet configuration)
+npm run generate-chains 50 [pattern] 2 0.5
+
+# Generate chains (multiple bet configurations)
+npm run generate-chains 25 [pattern] --all-configs
 
 # Verify chains (mandatory)
 npm run verify-chain
@@ -480,24 +509,27 @@ npm run verify-chain
 # Import to database
 npm run import-chains
 ```
-**Use for**: Validating specific patterns, balanced testing
+**Use for**: Validating specific patterns, balanced testing, comprehensive bet coverage
 
 ### 3. Comprehensive Testing (Pre-Production)
 ```bash
-# Generate chains for each pattern
-npm run generate-chains 200 comeback
+# Generate chains for each pattern (single bet configuration)
+npm run generate-chains 200 comeback 5 1.0
 npm run verify-chain
 npm run import-chains
 
-npm run generate-chains 200 cliffhanger  
+# Generate chains with all bet configurations (smaller sample per config)
+npm run generate-chains 50 comeback --all-configs
 npm run verify-chain
 npm run import-chains
 
-npm run generate-chains 200 discovery
-npm run verify-chain
-npm run import-chains
+# Repeat for other patterns
+npm run generate-chains 50 cliffhanger --all-configs
+npm run generate-chains 50 discovery --all-configs
+npm run generate-chains 50 tease --all-configs
+npm run generate-chains 50 wave --all-configs
 ```
-**Use for**: Stability testing, RTP validation
+**Use for**: Stability testing, RTP validation, comprehensive bet configuration coverage
 
 ### 4. Production Validation
 ```bash
@@ -531,6 +563,36 @@ npm run verify-chain -- all
 - Automated validation prevents production issues
 - Comprehensive error reporting for any detected issues
 
+### 🎰 Bet Configuration Management
+
+#### Updating Bet Settings
+To modify available bet configurations, edit `src/scripts/betSettings.ts`:
+
+```typescript
+// Add new bet levels
+export const BET_LEVELS = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 15, 20];
+
+// Add new coin values  
+export const COIN_VALUES = [0.01, 0.05, 0.1, 0.25, 0.5, 1, 2, 5];
+```
+
+#### Bet Configuration Impact
+- **Total Combinations**: BET_LEVELS.length × COIN_VALUES.length
+- **Generation Time**: Proportional to total combinations
+- **Storage Requirements**: Each combination generates separate chain files
+- **Testing Coverage**: More combinations = better bet coverage
+
+#### File Naming Convention
+Generated files include bet configuration in the filename:
+- **Single Config**: `pattern-Nboards-LXXX-CXXX-timestamp.json`
+- **Example**: `tease-50boards-L5-C1-1234567890.json` (Level 5, Coin $1.00)
+
+#### Best Practices
+- **Development**: Use single configurations for speed
+- **Testing**: Use `--all-configs` for comprehensive coverage  
+- **Production**: Generate all configurations for complete bet range
+- **Storage**: Monitor disk space when generating many configurations
+
 ---
 
 ## 🎯 Summary
@@ -541,6 +603,7 @@ npm run verify-chain -- all
 1. **Data Format**: All generated chains follow Pattern 1 and Pattern 2 from `PREGENERATEDRESULT_COMPATIBLE_GUIDE.md`
 2. **Built-in Validation**: Real-time validation during generation ensures 100% compliance
 3. **Simplified Workflow**: Single-step generation with automatic validation
+4. **Flexible Bet Configuration**: Support for single and multiple bet configurations via centralized settings
 
 #### Quality Assurance Achievements
 - **✅ 100% Validation Success**: All 5 patterns tested and validated successfully
@@ -559,6 +622,7 @@ npm run verify-chain -- all
 2. **❌ → ✅ Extra Initial Tumbles**: Removed incorrect "initial state" tumbles  
 3. **❌ → ✅ Final Tumble Format**: Clean final tumbles without cascade properties
 4. **❌ → ✅ Validation System**: Comprehensive real-time validation added
+5. **❌ → ✅ Bet Configuration**: Centralized bet settings with multiple configuration support
 
 **Last Updated**: September 2025  
 **Version**: v3.0  

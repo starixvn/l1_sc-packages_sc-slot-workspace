@@ -12,6 +12,14 @@ import { Difficulty } from 'sc-slot-board-generator';
 import { writeFileSync, mkdirSync, existsSync } from 'fs';
 import { join } from 'path';
 import { createPatternSpecificBoardGeneratorFactory, getPatternConfigSummary } from '../cascading-slot/custom-generator-configs';
+import { 
+    BetConfiguration, 
+    BET_LEVELS, 
+    COIN_VALUES, 
+    generateAllBetConfigurations,
+    getTotalBetConfigurations,
+    formatBetConfiguration
+} from './betSettings.js';
 
 // Available patterns for chain generation
 const AVAILABLE_PATTERNS = {
@@ -51,9 +59,12 @@ interface GenerationConfig {
     tolerance: number;
     outputDir: string;
     betSize: number;
-    betLevel: number;
-    coinValue: number;
+    betLevel?: number;  // Optional for single config mode
+    coinValue?: number; // Optional for single config mode
+    betConfigurations?: BetConfiguration[]; // For multiple config mode
 }
+
+// Note: BetConfiguration interface and arrays are now imported from betSettings.ts
 
 async function main() {
     try {
@@ -69,8 +80,20 @@ async function main() {
         console.log(`   Patterns: ${config.patterns.join(', ')}`);
         console.log(`   Board Counts: ${config.boardCounts.join(', ')}`);
         console.log(`   Target RTP: ${(config.targetRTP * 100).toFixed(1)}%`);
-        console.log(`   Bet Level: ${config.betLevel}`);
-        console.log(`   Coin Value: $${config.coinValue}`);
+        
+        // Determine if using single or multiple bet configurations
+        const betConfigurations = config.betConfigurations || 
+            [{ betLevel: config.betLevel!, coinValue: config.coinValue! }];
+
+        if (config.betConfigurations) {
+            console.log(`   Bet Configurations: ${betConfigurations.length} combinations`);
+            console.log(`   Bet Levels: [${BET_LEVELS.join(', ')}]`);
+            console.log(`   Coin Values: [${COIN_VALUES.join(', ')}]`);
+        } else {
+            console.log(`   Bet Level: ${config.betLevel}`);
+            console.log(`   Coin Value: $${config.coinValue}`);
+        }
+        
         console.log(`   Max Retries: ${config.maxRetries}`);
         console.log(`   Tolerance: ${(config.tolerance * 100).toFixed(1)}%`);
         console.log(`   Output Dir: ${config.outputDir}`);
@@ -94,24 +117,40 @@ async function main() {
             console.log(`📁 Created output directory: ${config.outputDir}`);
         }
 
-        // Generate chains for each pattern and board count combination
-        const totalChains = config.patterns.length * config.boardCounts.length;
+        // Calculate total chains to generate
+        const totalChains = betConfigurations.length * config.patterns.length * config.boardCounts.length;
         console.log(`🔄 Generating ${totalChains} chains...`);
+        if (betConfigurations.length > 1) {
+            console.log(`   ${betConfigurations.length} bet configurations × ${config.patterns.length} patterns × ${config.boardCounts.length} board counts`);
+        }
         console.log('');
 
         let successCount = 0;
         let failureCount = 0;
         const results = [];
 
-        for (const pattern of config.patterns) {
-            for (const boardCount of config.boardCounts) {
-                const timestamp = Date.now();
-                const chainName = `${pattern}-${boardCount}boards-${timestamp}`;
-                
-                console.log(`🎭 Generating: ${chainName}`);
-                
-                try {
-                    const chainResult = await generateChain(pattern, boardCount, config);
+        // 🎯 ENHANCED LOOP: Support multiple bet configurations
+        for (const betConfig of betConfigurations) {
+            if (betConfigurations.length > 1) {
+                console.log(`💰 Processing bet configuration: ${formatBetConfiguration(betConfig)}`);
+            }
+            
+            for (const pattern of config.patterns) {
+                for (const boardCount of config.boardCounts) {
+                    const timestamp = Date.now();
+                    const chainName = `${pattern}-${boardCount}boards-L${betConfig.betLevel}-C${betConfig.coinValue.toString().replace('.', '_')}-${timestamp}`;
+                    
+                    console.log(`🎭 Generating: ${chainName}`);
+                    
+                    try {
+                        // Create config with current bet configuration
+                        const currentConfig = {
+                            ...config,
+                            betLevel: betConfig.betLevel,
+                            coinValue: betConfig.coinValue
+                        };
+                        
+                        const chainResult = await generateChain(pattern, boardCount, currentConfig);
                     
                     if (chainResult.success) {
                         // Save to JSON file
@@ -119,12 +158,12 @@ async function main() {
                         const filePath = join(config.outputDir, filename);
                         
                         const actualRTP = chainResult.actualRTP || 0;
-                        // Create bet data from configuration parameters
+                        // Create bet data from current bet configuration
                         const betData = {
-                            betLevel: config.betLevel,
-                            coinValue: config.coinValue,
+                            betLevel: betConfig.betLevel,
+                            coinValue: betConfig.coinValue,
                             betMultiplier: 20, // Standard multiplier
-                            betAmount: config.betSize
+                            betAmount: betConfig.betLevel * betConfig.coinValue * 20 / 20
                         };
 
                         const chainData = {
@@ -210,6 +249,9 @@ async function main() {
                 }
             }
         }
+        
+        // End of bet configuration loop
+        }
 
         // Summary
         console.log('📈 Generation Summary:');
@@ -267,11 +309,29 @@ function parseArguments(args: string[]): GenerationConfig {
         process.exit(0);
     }
 
+    // Check for multiple configurations flag
+    const useMultipleConfigs = args.includes('--all-configs') || args.includes('--multi');
+    
+    // Filter out flags from positional arguments
+    const positionalArgs = args.filter(arg => !arg.startsWith('--'));
+
     // Positional arguments (like test-pattern scripts)
-    const boardCount = args[0] ? parseInt(args[0], 10) : 125;
-    const patternsInput = args[1] || 'comeback,cliffhanger,discovery,tease,wave';
-    const betLevel = args[2] ? parseFloat(args[2]) : 0.5;
-    const coinValue = args[3] ? parseFloat(args[3]) : 0.1;
+    const boardCount = positionalArgs[0] ? parseInt(positionalArgs[0], 10) : 125;
+    const patternsInput = positionalArgs[1] || 'comeback,cliffhanger,discovery,tease,wave';
+    
+    let betLevel: number | undefined;
+    let coinValue: number | undefined;
+    let betConfigurations: BetConfiguration[] | undefined;
+
+    if (useMultipleConfigs) {
+        // Generate all bet configurations
+        betConfigurations = generateAllBetConfigurations();
+        console.log(`🎯 Multiple configuration mode: ${betConfigurations.length} bet combinations`);
+    } else {
+        // Single configuration mode
+        betLevel = positionalArgs[2] ? parseFloat(positionalArgs[2]) : 0.5;
+        coinValue = positionalArgs[3] ? parseFloat(positionalArgs[3]) : 0.1;
+    }
     
     // Validate board count (allow smaller counts for testing)
     if (isNaN(boardCount) || boardCount < 10 || boardCount > 150) {
@@ -280,18 +340,19 @@ function parseArguments(args: string[]): GenerationConfig {
         process.exit(1);
     }
 
-    // Validate betLevel
-    if (isNaN(betLevel) || betLevel < 0.1 || betLevel > 10.0) {
-        console.error(`❌ Error: Bet level must be between 0.1-10.0, got: ${betLevel}`);
-        showHelp();
-        process.exit(1);
-    }
+    // Validate betLevel and coinValue (only for single config mode)
+    if (!useMultipleConfigs) {
+        if (isNaN(betLevel!) || betLevel! < 0.1 || betLevel! > 10.0) {
+            console.error(`❌ Error: Bet level must be between 0.1-10.0, got: ${betLevel}`);
+            showHelp();
+            process.exit(1);
+        }
 
-    // Validate coinValue
-    if (isNaN(coinValue) || coinValue < 0.01 || coinValue > 1.0) {
-        console.error(`❌ Error: Coin value must be between 0.01-1.0, got: ${coinValue}`);
-        showHelp();
-        process.exit(1);
+        if (isNaN(coinValue!) || coinValue! < 0.01 || coinValue! > 2.0) {
+            console.error(`❌ Error: Coin value must be between 0.01-2.0, got: ${coinValue}`);
+            showHelp();
+            process.exit(1);
+        }
     }
 
     // Parse patterns
@@ -315,7 +376,8 @@ function parseArguments(args: string[]): GenerationConfig {
         outputDir: './chain-output',
         betSize: 1.0,
         betLevel,
-        coinValue
+        coinValue,
+        betConfigurations
     };
 }
 
@@ -323,20 +385,41 @@ function showHelp(): void {
     console.log(`
 Enhanced Chain Generation Script (JSON Output)
 
-Usage: npm run generate-chains [boardCount] [patterns] [betLevel] [coinValue]
+Usage: 
+  Single Configuration:
+    npm run generate-chains [boardCount] [patterns] [betLevel] [coinValue]
+  
+  Multiple Configurations:
+    npm run generate-chains [boardCount] [patterns] --all-configs
+    npm run generate-chains [boardCount] [patterns] --multi
 
 Arguments:
-  boardCount    Number of boards per chain (100-150, default: 125)
+  boardCount    Number of boards per chain (10-150, default: 125)
   patterns      Comma-separated pattern types (default: all patterns)
-  betLevel      Bet level multiplier (0.1-10.0, default: 0.5)
-  coinValue     Coin value in currency (0.01-1.0, default: 0.1)
+  betLevel      Bet level multiplier (0.1-10.0, default: 0.5) [single mode only]
+  coinValue     Coin value in currency (0.01-2.0, default: 0.1) [single mode only]
+
+Flags:
+  --all-configs Generate chains for all bet level/coin value combinations
+  --multi       Alias for --all-configs
+  --help, -h    Show this help message
+
+Multiple Configuration Arrays:
+  Bet Levels: [${BET_LEVELS.join(', ')}]
+  Coin Values: [${COIN_VALUES.join(', ')}]
+  Total Combinations: ${getTotalBetConfigurations()}
 
 Examples:
-  npm run generate-chains                           # Generate all patterns with defaults (125 boards, 0.5 bet level, 0.1 coin value)
-  npm run generate-chains 100 tease 1.0 0.05       # Generate tease pattern with 100 boards, bet level 1.0, coin value 0.05
-  npm run generate-chains 100                      # Generate all patterns with 100 boards  
-  npm run generate-chains 125 comeback             # Generate comeback pattern with 125 boards
-  npm run generate-chains 150 comeback,wave        # Generate comeback & wave with 150 boards
+  Single Configuration Mode:
+    npm run generate-chains                         # All patterns, 125 boards, default bet settings
+    npm run generate-chains 100                    # All patterns, 100 boards, default bet settings
+    npm run generate-chains 100 tease              # Tease pattern only, 100 boards
+    npm run generate-chains 100 "tease,wave" 1.0 0.5 # Custom bet: level 1.0, coin 0.5
+  
+  Multiple Configuration Mode:
+    npm run generate-chains 50 tease --all-configs # Tease pattern, 60 bet combinations
+    npm run generate-chains 30 --multi             # All patterns, 60 combinations each
+    npm run generate-chains 25 "comeback,wave" --all-configs # 2 patterns × 60 combinations
 
 Available Patterns (with automatic board generator configuration):
   - comeback     : 🛡️  Recovery pattern → Easy difficulty, 1x-18x multipliers, frequent wins
