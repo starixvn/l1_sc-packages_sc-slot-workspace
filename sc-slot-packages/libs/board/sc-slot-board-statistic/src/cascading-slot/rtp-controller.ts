@@ -32,6 +32,11 @@ export interface BoardResult {
     freeSpinBoards?: Array<{
         board: number[];
         multipliers: number[];
+        isFreeSpin: boolean;  // Required property from guide
+        accumulatedMultiplier: number;  // Total accumulated multiplier
+        remainingFreeSpins: number;  // Free spins left after this round
+        freeSpinsPlayed: number;  // Number of free spins played so far
+        freeSpinWins: number;  // Number of winning free spin rounds
         cascadeCount: number;
         win: number;
         isRetrigger: boolean;

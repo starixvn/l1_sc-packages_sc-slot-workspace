@@ -165,6 +165,7 @@ const preGeneratedResult = [
 
 ## Validation Checklist
 
+### Basic Structure
 - [ ] Array length = expected_tumbles (exactly N items for N tumbles)
 - [ ] All newBoard arrays have exactly 30 integers
 - [ ] explodedSymbols/newSymbols have 30 elements OR are empty arrays
@@ -173,6 +174,18 @@ const preGeneratedResult = [
 - [ ] Last item should create a non-winning tumble (to stop cascade)
 - [ ] Board symbols are valid (0-10 range)
 - [ ] multipliers array is not empty (at least [1])
+
+### Free Spin Validation
+- [ ] `isFreeSpin` boolean correctly indicates game mode
+- [ ] Free spin properties present when `isFreeSpin: true`:
+  - [ ] `accumulatedMultiplier` (number)
+  - [ ] `remainingFreeSpins` (number)
+  - [ ] `freeSpinsPlayed` (number)
+  - [ ] `freeSpinWins` (number)
+- [ ] Free spin awards follow correct rules:
+  - [ ] Base game (`isFreeSpin: false`): Use `initialOdds` (4→3, 5→6, 6+→18)
+  - [ ] Retrigger (`isFreeSpin: true`): Use `additionalOdds` (4+→5 always)
+- [ ] Scatter symbol count matches awarded free spins according to rules
 
 ## Key Insights Summary
 
@@ -249,6 +262,64 @@ All generated settlement data undergoes comprehensive validation:
 - ✅ **Property Validation**: Correct presence/absence of explodedSymbols and newSymbols
 - ✅ **Board State Consistency**: Proper originalBoard → newBoard transitions
 - ✅ **Win Calculations**: Positive wins for winning tumbles, zero for final tumbles
+
+## Free Spin Round Format
+
+Free spin rounds require additional properties in the board data structure:
+
+```javascript
+{
+  "board": [/* 30 integers */],
+  "multipliers": [/* multiplier values */],
+  "isFreeSpin": true,  // Indicates this is a free spin round
+  "accumulatedMultiplier": 35,  // Total accumulated multiplier
+  "remainingFreeSpins": 0,  // Free spins left after this round
+  "freeSpinsPlayed": 2,  // Number of free spins played so far
+  "freeSpinWins": 1,  // Number of winning free spin rounds
+  "settlementResult": {
+    "tumbles": [/* tumble data */],
+    "freeSpins": {
+      "count": 4,  // Number of scatter symbols found
+      "odds": 5    // Free spins awarded (based on rules below)
+    }
+  }
+}
+```
+
+## Free Spin Award Rules
+
+**⚠️ CRITICAL**: Free spin awards depend on game mode (base game vs free spin mode):
+
+### Base Game Awards (initialOdds)
+When `isFreeSpin: false`, use `initialOdds` from generator definition:
+- **4 scatter symbols** → **3 free spins**
+- **5 scatter symbols** → **6 free spins** 
+- **6+ scatter symbols** → **18 free spins**
+
+### Free Spin Retrigger Awards (additionalOdds)
+When `isFreeSpin: true`, use `additionalOdds` from generator definition:
+- **4+ scatter symbols** → **5 additional free spins** (regardless of count)
+
+### Example Validation
+```javascript
+// ❌ INCORRECT: Using initialOdds during retrigger
+{
+  "isFreeSpin": true,  // Already in free spin mode
+  "freeSpins": {
+    "count": 6,
+    "odds": 18  // Wrong! Should be 5 for retrigger
+  }
+}
+
+// ✅ CORRECT: Using additionalOdds during retrigger
+{
+  "isFreeSpin": true,  // Already in free spin mode
+  "freeSpins": {
+    "count": 6,
+    "odds": 5   // Correct! Always 5 for any retrigger (4+ scatters)
+  }
+}
+```
 
 ## Testing Utilities
 

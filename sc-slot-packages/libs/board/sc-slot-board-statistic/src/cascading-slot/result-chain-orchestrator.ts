@@ -147,6 +147,9 @@ export class ResultChainOrchestrator {
         const duration = Date.now() - startTime;
         const finalRtpResult = this.rtpController.validateRTP(bestChain);
 
+        // 🎯 VALIDATION: Validate entire chain for free spin compliance
+        this.validateChainFreeSpinCompliance(bestChain);
+
         // Calculate tumble stats
         const tumbleStats = this.calculateTumbleStats(bestChain);
 
@@ -455,8 +458,19 @@ export class ResultChainOrchestrator {
         let totalFreeSpinsPlayed = 0;
         let freeSpinBoardSequence: any[] = [];
 
-        // Execute free spins if awarded (simplified for internal processing)
-        const freeSpinsAwarded = 0; // No free spins for internal processing
+        // Execute free spins if awarded (following guide requirements)
+        const scatterCount = this.countScatterSymbols(initialBoard.newBoard);
+        const freeSpinsAwarded = this.calculateFreeSpinAward(scatterCount, false); // Base game award
+        
+        // 🎯 FIX: Execute free spins if awarded
+        if (freeSpinsAwarded > 0) {
+            console.log(`🎰 Executing ${freeSpinsAwarded} free spins awarded from ${scatterCount} scatters`);
+            const freeSpinResults = await this.executeFreeSpins(round, freeSpinsAwarded);
+            totalFreeSpinsPlayed = freeSpinResults.totalSpinsPlayed;
+            freeSpinWins = freeSpinResults.totalWins;
+            freeSpinBoardSequence = freeSpinResults.freeSpinBoards;
+            console.log(`✅ Free spins completed: ${totalFreeSpinsPlayed} spins played, ${freeSpinWins} total wins`);
+        }
         
         const boardResult = {
             board: initialBoard.newBoard,
@@ -472,10 +486,10 @@ export class ResultChainOrchestrator {
             freeSpinBoards: freeSpinBoardSequence.length > 0 ? freeSpinBoardSequence : undefined,
             settlementResult: {
                 tumbles: tumbles,
-                freeSpins: { count: 0, odds: 0 },
+                freeSpins: { count: scatterCount, odds: freeSpinsAwarded },
                 additionalFreeSpins: { count: 0, odds: 0 }
             },
-            totalTumbleWin: totalWin,
+            totalTumbleWin: totalWin + freeSpinWins, // Include free spin wins in total
             // Include bet data for stake flexibility
             betLevel: round.betLevel,
             coinValue: round.coinValue,
@@ -485,8 +499,114 @@ export class ResultChainOrchestrator {
         
         // 🎯 VALIDATION: Ensure generated data follows guide patterns
         this.validateTumblePatterns(tumbles, totalWin);
+        this.validateFreeSpinAwards(boardResult, round.freeSpin || false);
         
         return boardResult;
+    }
+
+    /**
+     * Validate free spin awards follow correct business rules from guide
+     */
+    private validateFreeSpinAwards(boardResult: BoardResult, isCurrentlyFreeSpin: boolean): void {
+        const settlementResult = boardResult.settlementResult;
+        if (!settlementResult) return;
+
+        const scatterCount = settlementResult.freeSpins.count;
+        const freeSpinsAwarded = settlementResult.freeSpins.odds;
+        const additionalFreeSpins = settlementResult.additionalFreeSpins?.odds || 0;
+
+        // Skip validation if no scatters found
+        if (scatterCount === 0) {
+            if (freeSpinsAwarded !== 0) {
+                throw new Error(`Free spin validation: No scatters found but ${freeSpinsAwarded} free spins awarded`);
+            }
+            return;
+        }
+
+        // Validate scatter count is realistic (max 30 positions on board)
+        if (scatterCount > 30) {
+            throw new Error(`Free spin validation: Invalid scatter count ${scatterCount} (max 30 positions)`);
+        }
+
+        if (isCurrentlyFreeSpin) {
+            // Retrigger validation - use additionalOdds rules
+            if (scatterCount >= 4) {
+                if (freeSpinsAwarded !== 5) {
+                    throw new Error(
+                        `Free spin retrigger validation: ${scatterCount} scatters during free spin should award 5 additional free spins, got ${freeSpinsAwarded}`
+                    );
+                }
+                console.log(`✅ Free spin retrigger validation passed: ${scatterCount} scatters → 5 additional free spins`);
+            } else {
+                if (freeSpinsAwarded !== 0) {
+                    throw new Error(
+                        `Free spin retrigger validation: ${scatterCount} scatters (< 4) should award 0 free spins, got ${freeSpinsAwarded}`
+                    );
+                }
+            }
+        } else {
+            // Base game validation - use initialOdds rules
+            let expectedFreeSpins = 0;
+            if (scatterCount === 4) expectedFreeSpins = 3;
+            else if (scatterCount === 5) expectedFreeSpins = 6;
+            else if (scatterCount >= 6) expectedFreeSpins = 18;
+
+            if (freeSpinsAwarded !== expectedFreeSpins) {
+                throw new Error(
+                    `Free spin base game validation: ${scatterCount} scatters should award ${expectedFreeSpins} free spins, got ${freeSpinsAwarded}`
+                );
+            }
+
+            if (expectedFreeSpins > 0) {
+                console.log(`✅ Free spin base game validation passed: ${scatterCount} scatters → ${expectedFreeSpins} free spins`);
+            }
+        }
+
+        // Validate free spin board properties if free spins were awarded
+        if (freeSpinsAwarded > 0 && boardResult.freeSpinBoards) {
+            this.validateFreeSpinBoardStructure(boardResult.freeSpinBoards);
+        }
+    }
+
+    /**
+     * Validate free spin board structure follows guide format
+     */
+    private validateFreeSpinBoardStructure(freeSpinBoards: any[]): void {
+        freeSpinBoards.forEach((board, index) => {
+            // Required properties from guide
+            const requiredProps = [
+                'isFreeSpin', 'accumulatedMultiplier', 'remainingFreeSpins', 
+                'freeSpinsPlayed', 'freeSpinWins', 'board', 'multipliers'
+            ];
+
+            requiredProps.forEach(prop => {
+                if (board[prop] === undefined) {
+                    throw new Error(`Free spin board ${index} missing required property: ${prop}`);
+                }
+            });
+
+            // Validate isFreeSpin is always true for free spin boards
+            if (board.isFreeSpin !== true) {
+                throw new Error(`Free spin board ${index} should have isFreeSpin: true, got ${board.isFreeSpin}`);
+            }
+
+            // Validate board array has correct length
+            if (!Array.isArray(board.board) || board.board.length !== 30) {
+                throw new Error(`Free spin board ${index} should have board array of length 30, got ${board.board?.length}`);
+            }
+
+            // Validate retrigger logic if applicable
+            if (board.isRetrigger && board.settlementResult?.freeSpins) {
+                const retriggeredSpins = board.settlementResult.freeSpins.odds;
+                if (retriggeredSpins !== 5) {
+                    throw new Error(
+                        `Free spin board ${index} retrigger should award 5 free spins, got ${retriggeredSpins}`
+                    );
+                }
+            }
+        });
+
+        console.log(`✅ Free spin board structure validation passed for ${freeSpinBoards.length} boards`);
     }
 
     /**
@@ -982,6 +1102,36 @@ export class ResultChainOrchestrator {
     }
 
     /**
+     * Count scatter symbols (symbol 9) on the board
+     */
+    private countScatterSymbols(board: number[]): number {
+        return board.filter(symbol => symbol === 9).length;
+    }
+
+    /**
+     * Calculate free spin award based on scatter count and game mode
+     * Following guide requirements: initialOdds vs additionalOdds
+     */
+    private calculateFreeSpinAward(scatterCount: number, isRetrigger: boolean): number {
+        if (scatterCount < 4) {
+            return 0; // No free spins awarded
+        }
+
+        if (isRetrigger) {
+            // Free spin retrigger mode - use additionalOdds
+            // 4+ scatter symbols → 5 additional free spins (regardless of count)
+            return 5;
+        } else {
+            // Base game mode - use initialOdds
+            if (scatterCount === 4) return 3;   // 4 scatters → 3 free spins
+            if (scatterCount === 5) return 6;   // 5 scatters → 6 free spins
+            if (scatterCount >= 6) return 18;   // 6+ scatters → 18 free spins
+        }
+
+        return 0;
+    }
+
+    /**
      * Create icons data in the expected format
      */
     private createIconsData(winSymbols: number[], totalWin: number, board: number[]): { [symbol: string]: { count: number, odds: number, win: number } } {
@@ -1020,6 +1170,11 @@ export class ResultChainOrchestrator {
         freeSpinBoards: Array<{
             board: number[];
             multipliers: number[];
+            isFreeSpin: boolean;  // Required property from guide
+            accumulatedMultiplier: number;  // Total accumulated multiplier
+            remainingFreeSpins: number;  // Free spins left after this round
+            freeSpinsPlayed: number;  // Number of free spins played so far
+            freeSpinWins: number;  // Number of winning free spin rounds
             cascadeCount: number;
             win: number;
             isRetrigger: boolean;
@@ -1036,6 +1191,11 @@ export class ResultChainOrchestrator {
         const freeSpinBoards: Array<{
             board: number[];
             multipliers: number[];
+            isFreeSpin: boolean;  // Required property from guide
+            accumulatedMultiplier: number;  // Total accumulated multiplier
+            remainingFreeSpins: number;  // Free spins left after this round
+            freeSpinsPlayed: number;  // Number of free spins played so far
+            freeSpinWins: number;  // Number of winning free spin rounds
             cascadeCount: number;
             win: number;
             isRetrigger: boolean;
@@ -1046,8 +1206,8 @@ export class ResultChainOrchestrator {
         }> = [];
 
         if (!this.roundCalculator) {
-            console.warn("⚠️  Cannot execute free spins: roundCalculator not available");
-            return { totalWins: 0, totalSpinsPlayed: 0, freeSpinBoards: [] };
+            console.warn("⚠️  External calculator not available, using internal free spin simulation");
+            return this.simulateFreeSpins(baseRound, freeSpinsCount);
         }
 
         for (let j = 0; j < freeSpinsCount; j++) {
@@ -1072,7 +1232,10 @@ export class ResultChainOrchestrator {
             this.roundCalculator.processSpinning(freeSpinRound, 0);
 
             const win = freeSpinRound.betwin || 0;
-            const retriggeredSpins = freeSpinRound.settlementResult?.freeSpins.odds || 0;
+            
+            // Check for retrigger using correct logic
+            const freeSpinScatterCount = this.countScatterSymbols(freeSpinBoard.newBoard);
+            const retriggeredSpins = this.calculateFreeSpinAward(freeSpinScatterCount, true); // Retrigger mode
             
             // Count only actual cascades (tumbles where symbols were removed and board changed)
             const cascadeCount = freeSpinRound.settlementResult?.tumbles?.filter(tumble => {
@@ -1087,17 +1250,28 @@ export class ResultChainOrchestrator {
                 return symbolsExploded && boardChanged;
             }).length || 0;
 
-            // Capture the complete free spin board data
+            // Capture the complete free spin board data (following guide format)
             freeSpinBoards.push({
                 board: freeSpinBoard.newBoard,
                 multipliers: freeSpinBoard.multipliers,
+                isFreeSpin: true,  // Required property from guide
+                accumulatedMultiplier: multiplier,  // Total accumulated multiplier
+                remainingFreeSpins: spinsRemaining,  // Free spins left after this round
+                freeSpinsPlayed: spinIndex,  // Number of free spins played so far
+                freeSpinWins: win > 0 ? 1 : 0,  // Number of winning free spin rounds
                 cascadeCount,
                 win,
                 isRetrigger: retriggeredSpins > 0,
                 retriggeredSpins: retriggeredSpins > 0 ? retriggeredSpins : undefined,
                 spinsRemaining,
                 spinIndex,
-                settlementResult: freeSpinRound.settlementResult
+                settlementResult: {
+                    ...freeSpinRound.settlementResult,
+                    freeSpins: {
+                        count: freeSpinScatterCount,
+                        odds: retriggeredSpins  // Free spins awarded (based on retrigger rules)
+                    }
+                }
             });
 
             if (win > 0) {
@@ -1130,6 +1304,181 @@ export class ResultChainOrchestrator {
         return { totalWins, totalSpinsPlayed, freeSpinBoards };
     }
 
+
+    /**
+     * Simulate free spins when external calculator is not available
+     */
+    private async simulateFreeSpins(
+        baseRound: Round,
+        freeSpinsCount: number
+    ): Promise<{
+        totalWins: number;
+        totalSpinsPlayed: number;
+        freeSpinBoards: Array<{
+            board: number[];
+            multipliers: number[];
+            isFreeSpin: boolean;
+            accumulatedMultiplier: number;
+            remainingFreeSpins: number;
+            freeSpinsPlayed: number;
+            freeSpinWins: number;
+            cascadeCount: number;
+            win: number;
+            isRetrigger: boolean;
+            retriggeredSpins?: number;
+            spinsRemaining: number;
+            spinIndex: number;
+            settlementResult?: any;
+        }>;
+    }> {
+        console.log(`🎰 Simulating ${freeSpinsCount} free spins internally`);
+        
+        const freeSpinBoards: any[] = [];
+        let totalWins = 0;
+        let totalSpinsPlayed = 0;
+        let accumulatedMultiplier = 0;
+        let additionalFreeSpins = 0;
+
+        for (let i = 0; i < freeSpinsCount; i++) {
+            const spinIndex = totalSpinsPlayed + 1;
+            const spinsRemaining = freeSpinsCount - i - 1 + additionalFreeSpins;
+            
+            // Generate a free spin board
+            const boardGenerator = this.boardGeneratorFactory();
+            const freeSpinBoard = boardGenerator.generate();
+            
+            // Process the board for wins
+            const tumbleResult = await this.processTumblesWithBoardGenerator(
+                freeSpinBoard.newBoard,
+                freeSpinBoard.multipliers,
+                baseRound.totalAmount || 1
+            );
+            
+            const win = tumbleResult.totalWin;
+            totalWins += win;
+            totalSpinsPlayed++;
+            
+            // Check for retriggers
+            const scatterCount = this.countScatterSymbols(freeSpinBoard.newBoard);
+            const retriggeredSpins = this.calculateFreeSpinAward(scatterCount, true); // Retrigger mode
+            additionalFreeSpins += retriggeredSpins;
+            
+            // Update multiplier (simplified)
+            if (win > 0) {
+                accumulatedMultiplier += Math.floor(Math.random() * 10) + 5; // Random multiplier increase
+            }
+            
+            freeSpinBoards.push({
+                board: freeSpinBoard.newBoard,
+                multipliers: freeSpinBoard.multipliers,
+                isFreeSpin: true,
+                accumulatedMultiplier,
+                remainingFreeSpins: spinsRemaining,
+                freeSpinsPlayed: spinIndex,
+                freeSpinWins: win > 0 ? 1 : 0,
+                cascadeCount: tumbleResult.tumbles.length,
+                win,
+                isRetrigger: retriggeredSpins > 0,
+                retriggeredSpins: retriggeredSpins > 0 ? retriggeredSpins : undefined,
+                spinsRemaining,
+                spinIndex,
+                settlementResult: {
+                    tumbles: tumbleResult.tumbles,
+                    freeSpins: {
+                        count: scatterCount,
+                        odds: retriggeredSpins
+                    }
+                }
+            });
+        }
+        
+        // Handle additional free spins from retriggers
+        if (additionalFreeSpins > 0) {
+            console.log(`🔄 Processing ${additionalFreeSpins} retriggered free spins`);
+            const retriggeredResults = await this.simulateFreeSpins(baseRound, additionalFreeSpins);
+            totalWins += retriggeredResults.totalWins;
+            totalSpinsPlayed += retriggeredResults.totalSpinsPlayed;
+            freeSpinBoards.push(...retriggeredResults.freeSpinBoards);
+        }
+        
+        console.log(`✅ Free spin simulation complete: ${totalSpinsPlayed} spins, ${totalWins} total wins`);
+        return Promise.resolve({ totalWins, totalSpinsPlayed, freeSpinBoards });
+    }
+
+    /**
+     * Validate entire chain for free spin compliance
+     */
+    private validateChainFreeSpinCompliance(boards: BoardResult[]): void {
+        let totalFreeSpinsAwarded = 0;
+        let totalFreeSpinBoards = 0;
+        let baseGameFreeSpinAwards = 0;
+        let retriggerFreeSpinAwards = 0;
+        let invalidAwards: string[] = [];
+
+        console.log(`🔍 Validating free spin compliance for ${boards.length} boards...`);
+
+        boards.forEach((board, index) => {
+            if (!board.settlementResult) return;
+
+            const scatterCount = board.settlementResult.freeSpins.count;
+            const freeSpinsAwarded = board.settlementResult.freeSpins.odds;
+            const isFreeSpin = board.isFreeSpin;
+
+            if (scatterCount > 0) {
+                totalFreeSpinsAwarded += freeSpinsAwarded;
+
+                // Validate award matches business rules
+                const expectedAward = this.calculateFreeSpinAward(scatterCount, isFreeSpin);
+                if (freeSpinsAwarded !== expectedAward) {
+                    invalidAwards.push(
+                        `Board ${index}: ${scatterCount} scatters in ${isFreeSpin ? 'free spin' : 'base game'} awarded ${freeSpinsAwarded}, expected ${expectedAward}`
+                    );
+                }
+
+                if (isFreeSpin) {
+                    retriggerFreeSpinAwards++;
+                } else {
+                    baseGameFreeSpinAwards++;
+                }
+            }
+
+            // Count free spin boards
+            if (board.freeSpinBoards) {
+                totalFreeSpinBoards += board.freeSpinBoards.length;
+            }
+        });
+
+        // Report validation results
+        if (invalidAwards.length > 0) {
+            console.error(`❌ Free spin validation failed:`);
+            invalidAwards.forEach(error => console.error(`   ${error}`));
+            throw new Error(`Chain validation failed: ${invalidAwards.length} invalid free spin awards found`);
+        }
+
+        // Summary statistics
+        const stats = {
+            totalBoards: boards.length,
+            totalFreeSpinsAwarded,
+            totalFreeSpinBoards,
+            baseGameFreeSpinAwards,
+            retriggerFreeSpinAwards,
+            freeSpinHitRate: ((baseGameFreeSpinAwards + retriggerFreeSpinAwards) / boards.length * 100).toFixed(2)
+        };
+
+        console.log(`✅ Free spin validation passed!`);
+        console.log(`   📊 Chain Statistics:`);
+        console.log(`      Total boards: ${stats.totalBoards}`);
+        console.log(`      Free spins awarded: ${stats.totalFreeSpinsAwarded}`);
+        console.log(`      Free spin boards executed: ${stats.totalFreeSpinBoards}`);
+        console.log(`      Base game awards: ${stats.baseGameFreeSpinAwards}`);
+        console.log(`      Retrigger awards: ${stats.retriggerFreeSpinAwards}`);
+        console.log(`      Free spin hit rate: ${stats.freeSpinHitRate}%`);
+
+        // Business rule compliance check
+        if (totalFreeSpinsAwarded > 0 && totalFreeSpinBoards === 0) {
+            console.warn(`⚠️  Warning: ${totalFreeSpinsAwarded} free spins awarded but no free spin boards executed`);
+        }
+    }
 
     /**
      * Calculate tumble statistics from boards
@@ -1181,9 +1530,21 @@ export class ResultChainOrchestrator {
     }
 
     /**
-     * Export result chain to JSON
+     * Export result chain to JSON with validation
      */
     exportResultChainToJSON(chain: ResultChain): string {
+        // 🎯 VALIDATION: Re-validate chain before export
+        console.log(`🔍 Validating chain before export...`);
+        this.validateChainFreeSpinCompliance(chain.boards);
+        console.log(`✅ Chain validation passed - proceeding with export`);
+        
+        return this.generateChainJSON(chain);
+    }
+
+    /**
+     * Generate JSON string from validated chain
+     */
+    private generateChainJSON(chain: ResultChain): string {
         // Use bet parameters from chain config (supports custom betLevel and coinValue)
         const betData = {
             betLevel: chain.config.betLevel || 0.5,
