@@ -17,8 +17,10 @@ import {
     BET_LEVELS, 
     COIN_VALUES, 
     generateAllBetConfigurations,
-    getTotalBetConfigurations,
-    formatBetConfiguration
+    generateUniqueBetAmountConfigurations,
+    getUniqueBetAmounts,
+    getTotalBetConfigurations, 
+    formatBetConfiguration 
 } from './betSettings.js';
 
 // Available patterns for chain generation
@@ -61,10 +63,34 @@ interface GenerationConfig {
     betSize: number;
     betLevel?: number;  // Optional for single config mode
     coinValue?: number; // Optional for single config mode
-    betConfigurations?: BetConfiguration[]; // For multiple config mode
+    betAmounts?: number[]; // For multiple config mode - array of unique bet amounts
 }
 
 // Note: BetConfiguration interface and arrays are now imported from betSettings.ts
+
+/**
+ * Find a valid bet level/coin value combination for a given bet amount
+ * @param betAmount - Target bet amount
+ * @returns BetConfiguration that produces the target bet amount
+ */
+function findBetConfigForAmount(betAmount: number): BetConfiguration {
+    // Find the first valid combination that produces this bet amount
+    for (const betLevel of BET_LEVELS) {
+        for (const coinValue of COIN_VALUES) {
+            if (Math.abs(betLevel * coinValue - betAmount) < 0.001) { // Handle floating point precision
+                return { betLevel, coinValue };
+            }
+        }
+    }
+    
+    // Fallback: create a reasonable approximation
+    // Find the closest bet level for coinValue = 1
+    const closestBetLevel = BET_LEVELS.reduce((prev, curr) => 
+        Math.abs(curr - betAmount) < Math.abs(prev - betAmount) ? curr : prev
+    );
+    
+    return { betLevel: closestBetLevel, coinValue: 1 };
+}
 
 async function main() {
     try {
@@ -81,17 +107,17 @@ async function main() {
         console.log(`   Board Counts: ${config.boardCounts.join(', ')}`);
         console.log(`   Target RTP: ${(config.targetRTP * 100).toFixed(1)}%`);
         
-        // Determine if using single or multiple bet configurations
-        const betConfigurations = config.betConfigurations || 
-            [{ betLevel: config.betLevel!, coinValue: config.coinValue! }];
+        // Determine if using single or multiple bet amounts
+        const betAmounts = config.betAmounts || 
+            [config.betLevel! * config.coinValue!];
 
-        if (config.betConfigurations) {
-            console.log(`   Bet Configurations: ${betConfigurations.length} combinations`);
-            console.log(`   Bet Levels: [${BET_LEVELS.join(', ')}]`);
-            console.log(`   Coin Values: [${COIN_VALUES.join(', ')}]`);
+        if (config.betAmounts) {
+            console.log(`   Bet Amounts: ${betAmounts.length} unique amounts`);
+            console.log(`   Range: $${Math.min(...betAmounts).toFixed(2)} - $${Math.max(...betAmounts).toFixed(2)}`);
         } else {
             console.log(`   Bet Level: ${config.betLevel}`);
             console.log(`   Coin Value: $${config.coinValue}`);
+            console.log(`   Bet Amount: $${betAmounts[0].toFixed(2)}`);
         }
         
         console.log(`   Max Retries: ${config.maxRetries}`);
@@ -118,10 +144,10 @@ async function main() {
         }
 
         // Calculate total chains to generate
-        const totalChains = betConfigurations.length * config.patterns.length * config.boardCounts.length;
+        const totalChains = betAmounts.length * config.patterns.length * config.boardCounts.length;
         console.log(`🔄 Generating ${totalChains} chains...`);
-        if (betConfigurations.length > 1) {
-            console.log(`   ${betConfigurations.length} bet configurations × ${config.patterns.length} patterns × ${config.boardCounts.length} board counts`);
+        if (betAmounts.length > 1) {
+            console.log(`   ${betAmounts.length} bet amounts × ${config.patterns.length} patterns × ${config.boardCounts.length} board counts`);
         }
         console.log('');
 
@@ -129,25 +155,29 @@ async function main() {
         let failureCount = 0;
         const results = [];
 
-        // 🎯 ENHANCED LOOP: Support multiple bet configurations
-        for (const betConfig of betConfigurations) {
-            if (betConfigurations.length > 1) {
-                console.log(`💰 Processing bet configuration: ${formatBetConfiguration(betConfig)}`);
+        // 🎯 ENHANCED LOOP: Support multiple bet amounts
+        for (const betAmount of betAmounts) {
+            if (betAmounts.length > 1) {
+                console.log(`💰 Processing bet amount: $${betAmount.toFixed(2)}`);
             }
             
             for (const pattern of config.patterns) {
                 for (const boardCount of config.boardCounts) {
                     const timestamp = Date.now();
-                    const chainName = `${pattern}-${boardCount}boards-L${betConfig.betLevel}-C${betConfig.coinValue.toString().replace('.', '_')}-${timestamp}`;
+                    const betAmountStr = betAmount.toFixed(2).replace('.', '_');
+                    const chainName = `${pattern}-${boardCount}boards-bet${betAmountStr}-${timestamp}`;
                     
                     console.log(`🎭 Generating: ${chainName}`);
                     
                     try {
-                        // Create config with current bet configuration
+                        // Find a valid bet level/coin value combination for this bet amount
+                        const validConfig = findBetConfigForAmount(betAmount);
+                        
+                        // Create config with current bet amount
                         const currentConfig = {
                             ...config,
-                            betLevel: betConfig.betLevel,
-                            coinValue: betConfig.coinValue
+                            betLevel: validConfig.betLevel,
+                            coinValue: validConfig.coinValue
                         };
                         
                         const chainResult = await generateChain(pattern, boardCount, currentConfig);
@@ -158,12 +188,12 @@ async function main() {
                         const filePath = join(config.outputDir, filename);
                         
                         const actualRTP = chainResult.actualRTP || 0;
-                        // Create bet data from current bet configuration
+                        // Create bet data from current bet amount
                         const betData = {
-                            betLevel: betConfig.betLevel,
-                            coinValue: betConfig.coinValue,
+                            betLevel: validConfig.betLevel,
+                            coinValue: validConfig.coinValue,
                             betMultiplier: 20, // Standard multiplier
-                            betAmount: betConfig.betLevel * betConfig.coinValue * 20 / 20
+                            betAmount: betAmount
                         };
 
                         const chainData = {
@@ -309,11 +339,16 @@ function parseArguments(args: string[]): GenerationConfig {
         process.exit(0);
     }
 
-    // Check for multiple configurations flag
-    const useMultipleConfigs = args.includes('--all-configs') || args.includes('--multi');
+    // Check for multiple configurations flag (support both --flag and flag formats for npm compatibility)
+    const useMultipleConfigs = args.includes('--all-configs') || args.includes('--multi') || 
+                              args.includes('all-configs') || args.includes('multi');
     
     // Filter out flags from positional arguments
-    const positionalArgs = args.filter(arg => !arg.startsWith('--'));
+    const positionalArgs = args.filter(arg => 
+        !arg.startsWith('--') && 
+        arg !== 'all-configs' && 
+        arg !== 'multi'
+    );
 
     // Positional arguments (like test-pattern scripts)
     const boardCount = positionalArgs[0] ? parseInt(positionalArgs[0], 10) : 125;
@@ -321,12 +356,13 @@ function parseArguments(args: string[]): GenerationConfig {
     
     let betLevel: number | undefined;
     let coinValue: number | undefined;
-    let betConfigurations: BetConfiguration[] | undefined;
+    let betAmounts: number[] | undefined;
 
     if (useMultipleConfigs) {
-        // Generate all bet configurations
-        betConfigurations = generateAllBetConfigurations();
-        console.log(`🎯 Multiple configuration mode: ${betConfigurations.length} bet combinations`);
+        // Generate unique bet amounts (reduces file count by grouping duplicate bet amounts)
+        betAmounts = getUniqueBetAmounts();
+        const totalPossible = getTotalBetConfigurations();
+        console.log(`🎯 Multiple configuration mode: ${betAmounts.length} unique bet amounts (reduced from ${totalPossible} total combinations)`);
     } else {
         // Single configuration mode
         betLevel = positionalArgs[2] ? parseFloat(positionalArgs[2]) : 0.5;
@@ -377,7 +413,7 @@ function parseArguments(args: string[]): GenerationConfig {
         betSize: 1.0,
         betLevel,
         coinValue,
-        betConfigurations
+        betAmounts
     };
 }
 
@@ -390,8 +426,8 @@ Usage:
     npm run generate-chains [boardCount] [patterns] [betLevel] [coinValue]
   
   Multiple Configurations:
-    npm run generate-chains [boardCount] [patterns] --all-configs
-    npm run generate-chains [boardCount] [patterns] --multi
+    npm run generate-chains [boardCount] [patterns] multi
+    npm run generate-chains [boardCount] [patterns] all-configs
 
 Arguments:
   boardCount    Number of boards per chain (10-150, default: 125)
@@ -400,14 +436,14 @@ Arguments:
   coinValue     Coin value in currency (0.01-2.0, default: 0.1) [single mode only]
 
 Flags:
-  --all-configs Generate chains for all bet level/coin value combinations
-  --multi       Alias for --all-configs
+  multi         Generate chains for all unique bet amounts (grouped combinations)       
+  all-configs   Alias for multi
   --help, -h    Show this help message
 
 Multiple Configuration Arrays:
   Bet Levels: [${BET_LEVELS.join(', ')}]
   Coin Values: [${COIN_VALUES.join(', ')}]
-  Total Combinations: ${getTotalBetConfigurations()}
+  Unique Bet Amounts: ${getUniqueBetAmounts().length} (grouped from ${getTotalBetConfigurations()} total combinations)
 
 Examples:
   Single Configuration Mode:
@@ -417,9 +453,9 @@ Examples:
     npm run generate-chains 100 "tease,wave" 1.0 0.5 # Custom bet: level 1.0, coin 0.5
   
   Multiple Configuration Mode:
-    npm run generate-chains 50 tease --all-configs # Tease pattern, 60 bet combinations
-    npm run generate-chains 30 --multi             # All patterns, 60 combinations each
-    npm run generate-chains 25 "comeback,wave" --all-configs # 2 patterns × 60 combinations
+    npm run generate-chains 50 tease multi # Tease pattern, ~27 unique bet amounts
+    npm run generate-chains 30 multi       # All patterns, ~27 amounts each
+    npm run generate-chains 25 "comeback,wave" all-configs # 2 patterns × ~27 amounts
 
 Available Patterns (with automatic board generator configuration):
   - comeback     : 🛡️  Recovery pattern → Easy difficulty, 1x-18x multipliers, frequent wins

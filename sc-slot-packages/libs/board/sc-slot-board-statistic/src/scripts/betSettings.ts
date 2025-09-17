@@ -123,3 +123,36 @@ export function formatBetConfiguration(config: BetConfiguration): string {
 export function calculateBetAmount(config: BetConfiguration, betMultiplier: number = 20): number {
     return config.betLevel * config.coinValue * betMultiplier / 20;
 }
+
+/**
+ * Generate unique bet configurations grouped by bet amount
+ * This reduces file count by eliminating duplicate bet amounts from different level/coin combinations
+ * @returns Array of unique bet configurations (one per unique bet amount)
+ */
+export function generateUniqueBetAmountConfigurations(): BetConfiguration[] {
+    const allConfigs = generateAllBetConfigurations();
+    const uniqueBetAmounts = new Map<number, BetConfiguration>();
+    
+    // Group by bet amount, keeping the first occurrence of each unique amount
+    for (const config of allConfigs) {
+        const betAmount = config.betLevel * config.coinValue;
+        
+        if (!uniqueBetAmounts.has(betAmount)) {
+            uniqueBetAmounts.set(betAmount, config);
+        }
+    }
+    
+    // Sort by bet amount for consistent ordering
+    return Array.from(uniqueBetAmounts.values()).sort((a, b) => 
+        (a.betLevel * a.coinValue) - (b.betLevel * b.coinValue)
+    );
+}
+
+/**
+ * Get all unique bet amounts from current configuration
+ * @returns Sorted array of unique bet amounts
+ */
+export function getUniqueBetAmounts(): number[] {
+    const configs = generateUniqueBetAmountConfigurations();
+    return configs.map(config => config.betLevel * config.coinValue).sort((a, b) => a - b);
+}
