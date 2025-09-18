@@ -60,7 +60,6 @@ interface GenerationConfig {
     maxRetries: number;
     tolerance: number;
     outputDir: string;
-    betSize: number;
     betLevel?: number;  // Optional for single config mode
     coinValue?: number; // Optional for single config mode
     betAmounts?: number[]; // For multiple config mode - array of unique bet amounts
@@ -109,7 +108,7 @@ async function main() {
         
         // Determine if using single or multiple bet amounts
         const betAmounts = config.betAmounts || 
-            [config.betLevel! * config.coinValue!];
+            [config.betLevel! * config.coinValue! * 20]; // Include bet multiplier
 
         if (config.betAmounts) {
             console.log(`   Bet Amounts: ${betAmounts.length} unique amounts`);
@@ -213,8 +212,6 @@ async function main() {
                             config: {
                                 boardCount: boardCount,
                                 targetRTP: config.targetRTP,
-                                betSize: config.betSize,
-                                playerBudget: boardCount * config.betSize,
                                 difficulty: 'medium',
                                 maxRetries: config.maxRetries,
                                 tolerance: config.tolerance,
@@ -410,7 +407,6 @@ function parseArguments(args: string[]): GenerationConfig {
         maxRetries: 10,
         tolerance: 0.02,
         outputDir: './chain-output',
-        betSize: 1.0,
         betLevel,
         coinValue,
         betAmounts
@@ -481,13 +477,16 @@ async function generateChain(patternType: string, boardCount: number, config: Ge
     try {
         const startTime = Date.now();
         
+        // Calculate bet size from configuration
+        const betSize = (config.coinValue || 0.1) * (config.betLevel || 0.5) * 20;
+        
         // Create RTP configuration
         const rtpConfig = {
             targetRTP: config.targetRTP,
             tolerance: config.tolerance,
             boardCount: boardCount,
-            betSize: config.betSize,
-            playerBudget: boardCount * config.betSize,
+            betSize: betSize,
+            playerBudget: boardCount * betSize,
         };
 
         // ===============================
@@ -519,8 +518,6 @@ async function generateChain(patternType: string, boardCount: number, config: Ge
         const chainResult = await orchestrator.generateResultChain({
             boardCount: boardCount,
             targetRTP: config.targetRTP,
-            betSize: config.betSize,
-            playerBudget: boardCount * config.betSize,
             difficulty: Difficulty.Medium,
             maxRetries: config.maxRetries,
             tolerance: config.tolerance,
@@ -531,7 +528,7 @@ async function generateChain(patternType: string, boardCount: number, config: Ge
         const executionTime = Date.now() - startTime;
 
         // Calculate metrics
-        const totalWagered = chainResult.boards.length * config.betSize;
+        const totalWagered = chainResult.boards.length * betSize;
         let totalWon = 0;
         let featuresTriggered = 0;
         let freeSpinsWon = 0;
@@ -551,7 +548,7 @@ async function generateChain(patternType: string, boardCount: number, config: Ge
             if (boardWin === 0) {
                 winDistribution.losses++;
             } else {
-                const multiplier = boardWin / config.betSize;
+                const multiplier = boardWin / betSize;
                 if (multiplier <= 1) winDistribution.smallWins++;
                 else if (multiplier <= 5) winDistribution.mediumWins++;
                 else winDistribution.bigWins++;

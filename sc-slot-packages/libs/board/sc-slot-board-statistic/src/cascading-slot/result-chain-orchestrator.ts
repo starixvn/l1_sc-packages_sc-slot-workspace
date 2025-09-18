@@ -6,14 +6,13 @@ import { RTPController, RTPConfiguration, RTPResult, BoardResult } from "./rtp-c
 import { Round, Statistic, calculateStatistic } from "./statistic-calculator.js";
 import { commonDefinition, defaultOdds } from "./generator-definition.js";
 import { Difficulty } from "sc-slot-board-generator";
+import { ChainValidator } from "./chain-validator.js";
 
 // Import board generator from the other package
 // Note: This will require adding sc-slot-board-generator as dependency
 export interface ResultChainConfig {
     boardCount: number; // Number of boards in chain (100-150)
     targetRTP: number; // Target RTP (0.97 = 97%)
-    betSize: number; // Bet size per round
-    playerBudget: number; // Player's starting budget
     difficulty: Difficulty; // Game difficulty
     maxRetries: number; // Max attempts to generate valid chain
     tolerance: number; // RTP tolerance (±%)
@@ -66,6 +65,16 @@ export class ResultChainOrchestrator {
     }
 
     /**
+     * Calculate bet size from bet configuration
+     */
+    private calculateBetSize(config: ResultChainConfig): number {
+        const coinValue = config.coinValue || 0.1;
+        const betLevel = config.betLevel || 0.5;
+        const betMultiplier = 20; // Standard multiplier
+        return coinValue * betLevel * betMultiplier;
+    }
+
+    /**
      * Initialize external settlement calculator (same pattern as statistic-runner)
      */
     private initializeExternalCalculator(): boolean {
@@ -111,13 +120,17 @@ export class ResultChainOrchestrator {
         // Reset cascade pattern counter for this generation run
         this.resetCascadePatternCounter();
 
+        // Calculate bet size from configuration
+        const betSize = this.calculateBetSize(config);
+        const playerBudget = config.boardCount * betSize;
+
         // Update RTP controller with new config
         this.rtpController.updateConfig({
             targetRTP: config.targetRTP,
             tolerance: config.tolerance,
             boardCount: config.boardCount,
-            betSize: config.betSize,
-            playerBudget: config.playerBudget,
+            betSize: betSize,
+            playerBudget: playerBudget,
         });
 
         console.log(`🎯 Generating result chain: ${config.boardCount} boards, target RTP: ${(config.targetRTP * 100).toFixed(1)}%`);
@@ -148,7 +161,7 @@ export class ResultChainOrchestrator {
         const finalRtpResult = this.rtpController.validateRTP(bestChain);
 
         // 🎯 VALIDATION: Validate entire chain for free spin compliance
-        this.validateChainFreeSpinCompliance(bestChain);
+        ChainValidator.validateChainFreeSpinCompliance(bestChain);
 
         // Calculate tumble stats
         const tumbleStats = this.calculateTumbleStats(bestChain);
@@ -176,19 +189,20 @@ export class ResultChainOrchestrator {
      */
     private async generateSingleChain(config: ResultChainConfig): Promise<BoardResult[]> {
         const boards: BoardResult[] = [];
+        const betSize = this.calculateBetSize(config);
 
         for (let i = 0; i < config.boardCount; i++) {
             const shouldWin = this.rtpController.shouldNextBoardWin(boards);
             const targetWinSize = shouldWin ? this.rtpController.getTargetWinSize(boards) : 0;
 
-            const boardResult = await this.generateSingleBoard(targetWinSize, config.betSize, i, config);
+            const boardResult = await this.generateSingleBoard(targetWinSize, betSize, i, config);
             boards.push(boardResult);
 
             // Adjust strategy if we're drifting from target
             if (i % 20 === 19) {
                 // Adjust every 20 boards
                 const currentRTP = boards.length > 0 
-                    ? boards.reduce((sum, board) => sum + (board.totalTumbleWin || 0), 0) / (boards.length * config.betSize) 
+                    ? boards.reduce((sum, board) => sum + (board.totalTumbleWin || 0), 0) / (boards.length * betSize) 
                     : 0;
                 
                 console.log(`📈 Progress: ${i + 1}/${config.boardCount} boards, current RTP: ${(currentRTP * 100).toFixed(2)}%`);
@@ -498,186 +512,10 @@ export class ResultChainOrchestrator {
         };
         
         // 🎯 VALIDATION: Ensure generated data follows guide patterns
-        this.validateTumblePatterns(tumbles, totalWin);
-        this.validateFreeSpinAwards(boardResult, round.freeSpin || false);
+        ChainValidator.validateTumblePatterns(tumbles, totalWin);
+        ChainValidator.validateFreeSpinAwards(boardResult, round.freeSpin || false);
         
         return boardResult;
-    }
-
-    /**
-     * Validate free spin awards follow correct business rules from guide
-     */
-    private validateFreeSpinAwards(boardResult: BoardResult, isCurrentlyFreeSpin: boolean): void {
-        const settlementResult = boardResult.settlementResult;
-        if (!settlementResult) return;
-
-        const scatterCount = settlementResult.freeSpins.count;
-        const freeSpinsAwarded = settlementResult.freeSpins.odds;
-        const additionalFreeSpins = settlementResult.additionalFreeSpins?.odds || 0;
-
-        // Skip validation if no scatters found
-        if (scatterCount === 0) {
-            if (freeSpinsAwarded !== 0) {
-                throw new Error(`Free spin validation: No scatters found but ${freeSpinsAwarded} free spins awarded`);
-            }
-            return;
-        }
-
-        // Validate scatter count is realistic (max 30 positions on board)
-        if (scatterCount > 30) {
-            throw new Error(`Free spin validation: Invalid scatter count ${scatterCount} (max 30 positions)`);
-        }
-
-        if (isCurrentlyFreeSpin) {
-            // Retrigger validation - use additionalOdds rules
-            if (scatterCount >= 4) {
-                if (freeSpinsAwarded !== 5) {
-                    throw new Error(
-                        `Free spin retrigger validation: ${scatterCount} scatters during free spin should award 5 additional free spins, got ${freeSpinsAwarded}`
-                    );
-                }
-                console.log(`✅ Free spin retrigger validation passed: ${scatterCount} scatters → 5 additional free spins`);
-            } else {
-                if (freeSpinsAwarded !== 0) {
-                    throw new Error(
-                        `Free spin retrigger validation: ${scatterCount} scatters (< 4) should award 0 free spins, got ${freeSpinsAwarded}`
-                    );
-                }
-            }
-        } else {
-            // Base game validation - use initialOdds rules
-            let expectedFreeSpins = 0;
-            if (scatterCount === 4) expectedFreeSpins = 3;
-            else if (scatterCount === 5) expectedFreeSpins = 6;
-            else if (scatterCount >= 6) expectedFreeSpins = 18;
-
-            if (freeSpinsAwarded !== expectedFreeSpins) {
-                throw new Error(
-                    `Free spin base game validation: ${scatterCount} scatters should award ${expectedFreeSpins} free spins, got ${freeSpinsAwarded}`
-                );
-            }
-
-            if (expectedFreeSpins > 0) {
-                console.log(`✅ Free spin base game validation passed: ${scatterCount} scatters → ${expectedFreeSpins} free spins`);
-            }
-        }
-
-        // Validate free spin board properties if free spins were awarded
-        if (freeSpinsAwarded > 0 && boardResult.freeSpinBoards) {
-            this.validateFreeSpinBoardStructure(boardResult.freeSpinBoards);
-        }
-    }
-
-    /**
-     * Validate free spin board structure follows guide format
-     */
-    private validateFreeSpinBoardStructure(freeSpinBoards: any[]): void {
-        freeSpinBoards.forEach((board, index) => {
-            // Required properties from guide
-            const requiredProps = [
-                'isFreeSpin', 'accumulatedMultiplier', 'remainingFreeSpins', 
-                'freeSpinsPlayed', 'freeSpinWins', 'board', 'multipliers'
-            ];
-
-            requiredProps.forEach(prop => {
-                if (board[prop] === undefined) {
-                    throw new Error(`Free spin board ${index} missing required property: ${prop}`);
-                }
-            });
-
-            // Validate isFreeSpin is always true for free spin boards
-            if (board.isFreeSpin !== true) {
-                throw new Error(`Free spin board ${index} should have isFreeSpin: true, got ${board.isFreeSpin}`);
-            }
-
-            // Validate board array has correct length
-            if (!Array.isArray(board.board) || board.board.length !== 30) {
-                throw new Error(`Free spin board ${index} should have board array of length 30, got ${board.board?.length}`);
-            }
-
-            // Validate retrigger logic if applicable
-            if (board.isRetrigger && board.settlementResult?.freeSpins) {
-                const retriggeredSpins = board.settlementResult.freeSpins.odds;
-                if (retriggeredSpins !== 5) {
-                    throw new Error(
-                        `Free spin board ${index} retrigger should award 5 free spins, got ${retriggeredSpins}`
-                    );
-                }
-            }
-        });
-
-        console.log(`✅ Free spin board structure validation passed for ${freeSpinBoards.length} boards`);
-    }
-
-    /**
-     * Validate that generated tumbles follow the correct patterns from the guide
-     */
-    private validateTumblePatterns(tumbles: any[], totalWin: number): void {
-        if (totalWin === 0) {
-            // Pattern 1: No-win board
-            if (tumbles.length !== 1) {
-                throw new Error(`Pattern 1 violation: No-win board should have exactly 1 tumble, got ${tumbles.length}`);
-            }
-            
-            const tumble = tumbles[0];
-            if (Object.keys(tumble.icons || {}).length > 0) {
-                throw new Error(`Pattern 1 violation: No-win tumble should have empty icons`);
-            }
-            
-            if (tumble.win !== 0) {
-                throw new Error(`Pattern 1 violation: No-win tumble should have win = 0, got ${tumble.win}`);
-            }
-            
-            if (tumble.explodedSymbols || tumble.newSymbols) {
-                throw new Error(`Pattern 1 violation: No-win tumble should not have explodedSymbols or newSymbols`);
-            }
-            
-            if (tumble.originalBoard !== tumble.newBoard) {
-                throw new Error(`Pattern 1 violation: No-win tumble should have identical originalBoard and newBoard`);
-            }
-            
-            console.log(`✅ Pattern 1 validation passed: No-win board with 1 tumble`);
-        } else {
-            // Pattern 2: Winning board with cascades
-            if (tumbles.length < 2) {
-                throw new Error(`Pattern 2 violation: Winning board should have at least 2 tumbles, got ${tumbles.length}`);
-            }
-            
-            // Validate first tumbles (winning tumbles)
-            let totalWinFromTumbles = 0;
-            for (let i = 0; i < tumbles.length - 1; i++) {
-                const tumble = tumbles[i];
-                if (Object.keys(tumble.icons || {}).length === 0) {
-                    throw new Error(`Pattern 2 violation: Winning tumble ${i} should have icons data`);
-                }
-                
-                if (tumble.win <= 0) {
-                    throw new Error(`Pattern 2 violation: Winning tumble ${i} should have win > 0, got ${tumble.win}`);
-                }
-                
-                if (!tumble.explodedSymbols || !tumble.newSymbols) {
-                    throw new Error(`Pattern 2 violation: Winning tumble ${i} should have explodedSymbols and newSymbols`);
-                }
-                
-                totalWinFromTumbles += tumble.win;
-            }
-            
-            // Validate final tumble (no more wins)
-            const finalTumble = tumbles[tumbles.length - 1];
-            if (Object.keys(finalTumble.icons || {}).length > 0) {
-                throw new Error(`Pattern 2 violation: Final tumble should have empty icons`);
-            }
-            
-            if (finalTumble.win !== 0) {
-                throw new Error(`Pattern 2 violation: Final tumble should have win = 0, got ${finalTumble.win}`);
-            }
-            
-            if (finalTumble.explodedSymbols || finalTumble.newSymbols) {
-                throw new Error(`Pattern 2 violation: Final tumble should not have explodedSymbols or newSymbols`);
-            }
-            
-            console.log(`✅ Pattern 2 validation passed: ${tumbles.length} tumbles, total win: ${totalWinFromTumbles}`);
-        }
     }
 
     /**
@@ -1405,80 +1243,6 @@ export class ResultChainOrchestrator {
         return Promise.resolve({ totalWins, totalSpinsPlayed, freeSpinBoards });
     }
 
-    /**
-     * Validate entire chain for free spin compliance
-     */
-    private validateChainFreeSpinCompliance(boards: BoardResult[]): void {
-        let totalFreeSpinsAwarded = 0;
-        let totalFreeSpinBoards = 0;
-        let baseGameFreeSpinAwards = 0;
-        let retriggerFreeSpinAwards = 0;
-        let invalidAwards: string[] = [];
-
-        console.log(`🔍 Validating free spin compliance for ${boards.length} boards...`);
-
-        boards.forEach((board, index) => {
-            if (!board.settlementResult) return;
-
-            const scatterCount = board.settlementResult.freeSpins.count;
-            const freeSpinsAwarded = board.settlementResult.freeSpins.odds;
-            const isFreeSpin = board.isFreeSpin;
-
-            if (scatterCount > 0) {
-                totalFreeSpinsAwarded += freeSpinsAwarded;
-
-                // Validate award matches business rules
-                const expectedAward = this.calculateFreeSpinAward(scatterCount, isFreeSpin);
-                if (freeSpinsAwarded !== expectedAward) {
-                    invalidAwards.push(
-                        `Board ${index}: ${scatterCount} scatters in ${isFreeSpin ? 'free spin' : 'base game'} awarded ${freeSpinsAwarded}, expected ${expectedAward}`
-                    );
-                }
-
-                if (isFreeSpin) {
-                    retriggerFreeSpinAwards++;
-                } else {
-                    baseGameFreeSpinAwards++;
-                }
-            }
-
-            // Count free spin boards
-            if (board.freeSpinBoards) {
-                totalFreeSpinBoards += board.freeSpinBoards.length;
-            }
-        });
-
-        // Report validation results
-        if (invalidAwards.length > 0) {
-            console.error(`❌ Free spin validation failed:`);
-            invalidAwards.forEach(error => console.error(`   ${error}`));
-            throw new Error(`Chain validation failed: ${invalidAwards.length} invalid free spin awards found`);
-        }
-
-        // Summary statistics
-        const stats = {
-            totalBoards: boards.length,
-            totalFreeSpinsAwarded,
-            totalFreeSpinBoards,
-            baseGameFreeSpinAwards,
-            retriggerFreeSpinAwards,
-            freeSpinHitRate: ((baseGameFreeSpinAwards + retriggerFreeSpinAwards) / boards.length * 100).toFixed(2)
-        };
-
-        console.log(`✅ Free spin validation passed!`);
-        console.log(`   📊 Chain Statistics:`);
-        console.log(`      Total boards: ${stats.totalBoards}`);
-        console.log(`      Free spins awarded: ${stats.totalFreeSpinsAwarded}`);
-        console.log(`      Free spin boards executed: ${stats.totalFreeSpinBoards}`);
-        console.log(`      Base game awards: ${stats.baseGameFreeSpinAwards}`);
-        console.log(`      Retrigger awards: ${stats.retriggerFreeSpinAwards}`);
-        console.log(`      Free spin hit rate: ${stats.freeSpinHitRate}%`);
-
-        // Business rule compliance check
-        if (totalFreeSpinsAwarded > 0 && totalFreeSpinBoards === 0) {
-            console.warn(`⚠️  Warning: ${totalFreeSpinsAwarded} free spins awarded but no free spin boards executed`);
-        }
-    }
 
     /**
      * Calculate tumble statistics from boards
@@ -1519,11 +1283,11 @@ export class ResultChainOrchestrator {
         const testConfig: ResultChainConfig = {
             boardCount: Math.min(Math.max(rounds, 10), 20),
             targetRTP: 0.97,
-            betSize: 1,
-            playerBudget: 100,
             difficulty: Difficulty.Easy,
             maxRetries: 3,
             tolerance: 0.1, // More lenient for small batches
+            betLevel: 0.5,
+            coinValue: 0.1,
         };
 
         return this.generateResultChain(testConfig);
@@ -1535,7 +1299,7 @@ export class ResultChainOrchestrator {
     exportResultChainToJSON(chain: ResultChain): string {
         // 🎯 VALIDATION: Re-validate chain before export
         console.log(`🔍 Validating chain before export...`);
-        this.validateChainFreeSpinCompliance(chain.boards);
+        ChainValidator.validateCompleteChain(chain.boards);
         console.log(`✅ Chain validation passed - proceeding with export`);
         
         return this.generateChainJSON(chain);
@@ -1546,11 +1310,16 @@ export class ResultChainOrchestrator {
      */
     private generateChainJSON(chain: ResultChain): string {
         // Use bet parameters from chain config (supports custom betLevel and coinValue)
+        const betLevel = chain.config.betLevel || 0.5;
+        const coinValue = chain.config.coinValue || 0.1;
+        const betMultiplier = 20; // Standard multiplier
+        const betAmount = coinValue * betLevel * betMultiplier;
+        
         const betData = {
-            betLevel: chain.config.betLevel || 0.5,
-            coinValue: chain.config.coinValue || 0.1, 
-            betMultiplier: 20, // Standard multiplier
-            betAmount: chain.config.betSize || 1
+            betLevel,
+            coinValue, 
+            betMultiplier,
+            betAmount
         };
 
         const exportData = {
