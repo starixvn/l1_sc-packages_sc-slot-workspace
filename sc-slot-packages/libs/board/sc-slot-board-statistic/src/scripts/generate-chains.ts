@@ -8,6 +8,7 @@
 
 import { ResultChainOrchestrator } from '../cascading-slot/result-chain-orchestrator';
 import { BoardGeneratorAdapter } from '../cascading-slot/board-generator-adapter';
+import { commonDefinition } from '../cascading-slot/generator-definition';
 import { Difficulty } from 'sc-slot-board-generator';
 import { writeFileSync, mkdirSync, existsSync } from 'fs';
 import { join } from 'path';
@@ -108,7 +109,7 @@ async function main() {
         
         // Determine if using single or multiple bet amounts
         const betAmounts = config.betAmounts || 
-            [config.betLevel! * config.coinValue! * 20]; // Include bet multiplier
+            [config.betLevel! * config.coinValue! * commonDefinition.betSettings.defaultBetMultiplier];
 
         if (config.betAmounts) {
             console.log(`   Bet Amounts: ${betAmounts.length} unique amounts`);
@@ -191,7 +192,7 @@ async function main() {
                         const betData = {
                             betLevel: validConfig.betLevel,
                             coinValue: validConfig.coinValue,
-                            betMultiplier: 20, // Standard multiplier
+                            betMultiplier: commonDefinition.betSettings.defaultBetMultiplier,
                             betAmount: betAmount
                         };
 
@@ -480,7 +481,7 @@ async function generateChain(patternType: string, boardCount: number, config: Ge
         // Calculate bet amounts following correct rules
         const coinValue = config.coinValue || 0.1;
         const betLevel = config.betLevel || 0.5;
-        const betMultiplier = 20;
+        const betMultiplier = commonDefinition.betSettings.defaultBetMultiplier;
         const baseBetAmount = coinValue * betLevel;
         const totalBetAmount = baseBetAmount * betMultiplier;
         

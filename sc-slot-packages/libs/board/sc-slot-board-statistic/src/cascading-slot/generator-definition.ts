@@ -12,6 +12,9 @@ export const commonDefinition = {
     numberOfSymbols: 11,
     numberOfShuffles: 3,
   },
+  betSettings: {
+    defaultBetMultiplier: 20, // Standard bet multiplier (totalBet = baseBet × multiplier)
+  },
 };
 
 export const boardDefinition = {

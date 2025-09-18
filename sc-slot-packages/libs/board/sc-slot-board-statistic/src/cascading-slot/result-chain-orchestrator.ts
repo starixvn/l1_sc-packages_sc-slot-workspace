@@ -70,7 +70,7 @@ export class ResultChainOrchestrator {
     private calculateBetAmounts(config: ResultChainConfig): { baseBetAmount: number; totalBetAmount: number } {
         const coinValue = config.coinValue || 0.1;
         const betLevel = config.betLevel || 0.5;
-        const betMultiplier = 20; // Standard multiplier
+        const betMultiplier = commonDefinition.betSettings.defaultBetMultiplier;
         
         const baseBetAmount = coinValue * betLevel;
         const totalBetAmount = baseBetAmount * betMultiplier;
@@ -244,7 +244,7 @@ export class ResultChainOrchestrator {
             // Create round for settlement processing using config bet parameters
             const coinValue = config.coinValue || 0.1;
             const betLevel = config.betLevel || 0.5;
-            const betMultiplier = 20; // Standard multiplier
+            const betMultiplier = commonDefinition.betSettings.defaultBetMultiplier;
             
             // Use actual config values for the round
             const totalAmount = coinValue * betLevel * betMultiplier;
@@ -449,7 +449,7 @@ export class ResultChainOrchestrator {
         // Calculate bet details for chain data and correct payout calculations
         const coinValue = round.coinValue || 0.1;
         const betLevel = round.betLevel || 0.5;
-        const betMultiplier = round.betMultiplier || 20;
+        const betMultiplier = round.betMultiplier || commonDefinition.betSettings.defaultBetMultiplier;
         const baseBetAmount = coinValue * betLevel;
         
         // Use internal board processing instead of external calculator to ensure board continuity
@@ -521,7 +521,7 @@ export class ResultChainOrchestrator {
             betLevel: round.betLevel,
             coinValue: round.coinValue,
             betMultiplier: round.betMultiplier,
-            betAmount: (round.coinValue || 0.1) * (round.betLevel || 0.5) * (round.betMultiplier || 20)
+            betAmount: (round.coinValue || 0.1) * (round.betLevel || 0.5) * (round.betMultiplier || commonDefinition.betSettings.defaultBetMultiplier)
         };
         
         // 🎯 VALIDATION: Ensure generated data follows guide patterns
@@ -662,8 +662,8 @@ export class ResultChainOrchestrator {
             // explodedSymbols[i] = -1 (NO_SYMBOL) for not exploded, winning symbol value for exploded
             
             
-            // Calculate win for this tumble using correct payout rules
-            const tumbleWin = this.calculateTumbleWin(winSymbols, baseBetAmount);
+            // Calculate win for this tumble using correct payout rules with actual symbol counts
+            const tumbleWin = this.calculateTumbleWin(winSymbols, baseBetAmount, currentBoard);
             totalWin += tumbleWin;
             
             // Create tumble data with BoardGenerator format (CORRECT)
@@ -800,42 +800,81 @@ export class ResultChainOrchestrator {
     }
 
     /**
-     * Determine optimal symbol and count for target win
+     * Determine optimal symbol and count for target win based on actual defaultOdds
      */
     private determineTargetSymbolForWin(targetMultiplier: number, analysis: any): { symbol: number, count: number } {
         // If there are near-wins, build on the closest one
         if (analysis.nearWinSymbols.length > 0) {
             const closestNearWin = analysis.nearWinSymbols.sort((a, b) => a.needed - b.needed)[0];
-            const extraSymbols = Math.ceil(targetMultiplier); // Add extra symbols based on multiplier
+            
+            // Calculate how many symbols needed to reach target multiplier
+            const symbolConfig = defaultOdds.normalSymbols.find(s => s.symbol === closestNearWin.symbol);
+            if (symbolConfig) {
+                // Try different symbol counts to find best match
+                for (let count = 8; count <= 15; count++) {
+                    const odds = this.getSymbolOdds(closestNearWin.symbol, count);
+                    const multiplier = odds / commonDefinition.betSettings.defaultBetMultiplier;
+                    if (multiplier >= targetMultiplier * 0.8) { // Within 80% of target
+                        return { symbol: closestNearWin.symbol, count };
+                    }
+                }
+            }
+            
+            // Fallback: add extra symbols based on multiplier
+            const extraSymbols = Math.ceil(targetMultiplier / 2);
             return {
                 symbol: closestNearWin.symbol,
-                count: Math.min(8 + extraSymbols, 15) // Cap at 15 symbols max
+                count: Math.min(8 + extraSymbols, 15)
             };
         }
         
-        // Choose symbol based on target multiplier
-        let targetSymbol: number;
-        let symbolCount: number;
+        // Choose symbol and count based on target multiplier using actual odds
+        return this.findOptimalSymbolForMultiplier(targetMultiplier);
+    }
+
+    /**
+     * Find optimal symbol and count combination for target multiplier
+     */
+    private findOptimalSymbolForMultiplier(targetMultiplier: number): { symbol: number, count: number } {
+        const betMultiplier = commonDefinition.betSettings.defaultBetMultiplier;
+        const targetOdds = targetMultiplier * betMultiplier;
         
-        if (targetMultiplier >= 10.0) {
-            // Mega wins - use high-value symbols
-            targetSymbol = 7; // High-value symbol
-            symbolCount = 12;
-        } else if (targetMultiplier >= 5.0) {
-            // Big wins - use medium-high symbols
-            targetSymbol = 5;
-            symbolCount = 10;
-        } else if (targetMultiplier >= 2.0) {
-            // Medium wins - use medium symbols
-            targetSymbol = 3;
-            symbolCount = 9;
-        } else {
-            // Small wins - use low symbols
-            targetSymbol = 1;
-            symbolCount = 8;
+        let bestMatch = { symbol: 0, count: 8, distance: Infinity };
+        
+        // Test all symbols and counts to find best match
+        for (let symbol = 0; symbol <= 8; symbol++) {
+            const symbolConfig = defaultOdds.normalSymbols.find(s => s.symbol === symbol);
+            if (!symbolConfig) continue;
+            
+            // Test different symbol counts
+            for (let count = 8; count <= 15; count++) {
+                const odds = this.getSymbolOdds(symbol, count);
+                const distance = Math.abs(odds - targetOdds);
+                
+                if (distance < bestMatch.distance) {
+                    bestMatch = { symbol, count, distance };
+                }
+            }
         }
         
-        return { symbol: targetSymbol, count: symbolCount };
+        // Fallback logic for specific multiplier ranges if no good match found
+        if (bestMatch.distance > targetOdds * 0.5) {
+            if (targetMultiplier >= 20.0) {
+                return { symbol: 8, count: 8 };      // Premium symbol: 200x base
+            } else if (targetMultiplier >= 10.0) {
+                return { symbol: 7, count: 8 };      // High symbol: 50x base
+            } else if (targetMultiplier >= 5.0) {
+                return { symbol: 6, count: 8 };      // Medium-high: 40x base
+            } else if (targetMultiplier >= 2.0) {
+                return { symbol: 5, count: 8 };      // Medium: 30x base
+            } else if (targetMultiplier >= 1.0) {
+                return { symbol: 3, count: 8 };      // Low-medium: 16x base
+            } else {
+                return { symbol: 1, count: 8 };      // Low: 8x base
+            }
+        }
+        
+        return bestMatch;
     }
 
     /**
@@ -920,37 +959,60 @@ export class ResultChainOrchestrator {
      * Calculate win amount for a tumble based on winning symbols
      * Following correct payout rules: payoutWin = baseBetAmount * winningSymbol[count].odds
      */
-    private calculateTumbleWin(winSymbols: number[], baseBetAmount: number): number {
+    private calculateTumbleWin(winSymbols: number[], baseBetAmount: number, board?: number[]): number {
         let totalWin = 0;
         
-        winSymbols.forEach(symbol => {
-            // Correct payout calculation: baseBetAmount * odds (not totalBetAmount * odds)
-            const symbolOdds = this.getSymbolOdds(symbol);
-            totalWin += baseBetAmount * symbolOdds;
-        });
+        // If board is provided, count actual symbols for accurate payout tiers
+        if (board) {
+            const symbolCounts: { [symbol: number]: number } = {};
+            board.forEach(s => {
+                if (winSymbols.includes(s)) {
+                    symbolCounts[s] = (symbolCounts[s] || 0) + 1;
+                }
+            });
+            
+            // Calculate win for each unique winning symbol with its actual count
+            Object.entries(symbolCounts).forEach(([symbol, count]) => {
+                const symbolNum = parseInt(symbol);
+                const symbolOdds = this.getSymbolOdds(symbolNum, count);
+                totalWin += baseBetAmount * symbolOdds;
+            });
+        } else {
+            // Fallback: use base odds for each symbol (backward compatibility)
+            winSymbols.forEach(symbol => {
+                const symbolOdds = this.getSymbolOdds(symbol);
+                totalWin += baseBetAmount * symbolOdds;
+            });
+        }
         
         return totalWin;
     }
 
     /**
-     * Get odds for a symbol (simplified version)
+     * Get odds for a symbol using proper defaultOdds from generator-definition
      */
-    private getSymbolOdds(symbol: number): number {
-        // Default odds for different symbols (this should match game configuration)
-        const symbolOdds: { [symbol: number]: number } = {
-            0: 5,   // Crown
-            1: 8,   // Gem
-            2: 10,  // Bell
-            3: 16,  // Star
-            4: 20,  // Diamond
-            5: 15,  // Heart
-            6: 40,  // Scatter
-            7: 12,  // Wild
-            8: 25,  // Bonus
-            9: 18   // Special
-        };
+    private getSymbolOdds(symbol: number, symbolCount?: number): number {
+        // Find the symbol in defaultOdds.normalSymbols
+        const symbolConfig = defaultOdds.normalSymbols.find(s => s.symbol === symbol);
         
-        return symbolOdds[symbol] || 5; // Default odds
+        if (!symbolConfig) {
+            return 0; // Symbol not found
+        }
+        
+        // If symbol count is provided, find the appropriate payout tier
+        if (symbolCount !== undefined) {
+            for (const payoutRange of symbolConfig.payout) {
+                if (symbolCount >= payoutRange.from && symbolCount <= payoutRange.to) {
+                    return payoutRange.odds;
+                }
+            }
+        }
+        
+        // Default: Use the base odds (8-9 symbols range) as the standard payout
+        // This matches the minimum winning condition of 8+ symbols
+        const basePayoutRange = symbolConfig.payout.find(p => p.from === 8);
+        
+        return basePayoutRange ? basePayoutRange.odds : 0;
     }
 
     /**
@@ -1000,7 +1062,7 @@ export class ResultChainOrchestrator {
         
         winSymbols.forEach(symbol => {
             const count = symbolCounts[symbol] || 5; // Actual count from board
-            const odds = this.getSymbolOdds(symbol);
+            const odds = this.getSymbolOdds(symbol, count); // Use actual count for correct payout tier
             icons[symbol.toString()] = {
                 count,
                 odds,
@@ -1330,7 +1392,7 @@ export class ResultChainOrchestrator {
         // Use bet parameters from chain config (supports custom betLevel and coinValue)
         const betLevel = chain.config.betLevel || 0.5;
         const coinValue = chain.config.coinValue || 0.1;
-        const betMultiplier = 20; // Standard multiplier
+        const betMultiplier = commonDefinition.betSettings.defaultBetMultiplier;
         const betAmount = coinValue * betLevel * betMultiplier;
         
         const betData = {
