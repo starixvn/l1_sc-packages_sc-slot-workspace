@@ -214,8 +214,15 @@ export class ResultChainOrchestrator {
         let bestDistance = Infinity;
 
         const boardGenerator = this.boardGeneratorFactory();
+        const startTime = Date.now();
+        const maxTimeMs = 30000; // 30 second timeout per board
 
         for (let attempt = 0; attempt < maxAttempts; attempt++) {
+            // Check timeout
+            if (Date.now() - startTime > maxTimeMs) {
+                console.warn(`⚠️  Board ${boardId} generation timeout after ${attempt} attempts`);
+                break;
+            }
             let initialBoard = boardGenerator.generate();
             
             // 🎯 FIX FOR EMPTY TUMBLES: If target win > 0, ensure board has winning symbols
@@ -243,20 +250,26 @@ export class ResultChainOrchestrator {
                 },
             };
 
-            // Process settlement using external calculator
-            const boardResult = await this.processSettlement(initialBoard, round, betSize);
-            
-            const distance = Math.abs((boardResult.totalTumbleWin || 0) - targetWin);
+            try {
+                // Process settlement using external calculator
+                const boardResult = await this.processSettlement(initialBoard, round, betSize);
+                
+                const distance = Math.abs((boardResult.totalTumbleWin || 0) - targetWin);
 
-            if (distance < bestDistance || bestBoard === null) {
-                bestBoard = boardResult;
-                bestDistance = distance;
+                if (distance < bestDistance || bestBoard === null) {
+                    bestBoard = boardResult;
+                    bestDistance = distance;
 
-                // If we're close enough to target, use this board
-                if (distance <= betSize * 0.1) {
-                    // Within 10% of bet
-                    break;
+                    // If we're close enough to target, use this board
+                    if (distance <= betSize * 0.1) {
+                        // Within 10% of bet
+                        break;
+                    }
                 }
+            } catch (error) {
+                console.warn(`⚠️  Board ${boardId} attempt ${attempt} failed:`, error.message);
+                // Continue to next attempt
+                continue;
             }
         }
 
@@ -302,10 +315,10 @@ export class ResultChainOrchestrator {
                 win: 0
                 // No explodedSymbols or newSymbols properties
             }];
-            console.log(`✅ NO-WIN BOARD: Generated 1 tumble (Pattern 1)`);
+            // NO-WIN BOARD: Generated 1 tumble (Pattern 1) - silent logging
         } else {
             // Pattern 2: Winning board - final tumble should already be correct from processTumblesWithBoardGenerator
-            console.log(`✅ WINNING BOARD: Generated ${tumbles.length} tumbles (Pattern 2)`);
+            // WINNING BOARD: Generated tumbles (Pattern 2) - silent logging
         }
         
         let freeSpinWins = 0;
@@ -442,19 +455,34 @@ export class ResultChainOrchestrator {
      * 🎯 EMPTY TUMBLES FIX: Enhance board to have winning symbols for target win
      */
     private enhanceBoardForTargetWin(board: { newBoard: number[]; multipliers: number[] }, targetWin: number, totalBetAmount: number): { newBoard: number[]; multipliers: number[] } {
+        const enhancementStart = Date.now();
+        const maxEnhancementTime = 5000; // 5 second timeout for enhancement
+        
         const currentBoard = [...board.newBoard];
         const currentMultipliers = [...board.multipliers];
         
         // Analyze current board state
         const analysis = this.analyzeBoard(currentBoard);
         
-        console.log(`🎯 Enhancing board for target win: ${targetWin.toFixed(2)} (${(targetWin/totalBetAmount).toFixed(1)}x total bet)`);
-        console.log(`   Current winning symbols: [${analysis.winningSymbols.join(', ')}]`);
-        console.log(`   Near-win symbols: ${analysis.nearWinSymbols.map(s => `${s.symbol}(${s.count})`).join(', ')}`);
+        // Only log enhancement details for meaningful wins (2x+ multiplier) to reduce noise
+        const isSignificantWin = targetWin > totalBetAmount * 2; // 2x+ multiplier
+        if (isSignificantWin) {
+            console.log(`🎯 Enhancing board for target win: ${targetWin.toFixed(2)} (${(targetWin/totalBetAmount).toFixed(1)}x total bet)`);
+            console.log(`   Current winning symbols: [${analysis.winningSymbols.join(', ')}]`);
+            console.log(`   Near-win symbols: ${analysis.nearWinSymbols.map(s => `${s.symbol}(${s.count})`).join(', ')}`);
+        }
         
         // If already has winning symbols, return as-is (avoid over-enhancement)
         if (analysis.winningSymbols.length > 0) {
-            console.log(`   ✅ Board already has winning symbols, using as-is`);
+            if (isSignificantWin) {
+                console.log(`   ✅ Board already has winning symbols, using as-is`);
+            }
+            return { newBoard: currentBoard, multipliers: currentMultipliers };
+        }
+        
+        // Check timeout before expensive operations
+        if (Date.now() - enhancementStart > maxEnhancementTime) {
+            console.warn(`⚠️  Board enhancement timeout, returning original board`);
             return { newBoard: currentBoard, multipliers: currentMultipliers };
         }
         
@@ -465,8 +493,10 @@ export class ResultChainOrchestrator {
         // Place symbols strategically to create win
         const enhancedBoard = this.placeWinningSymbols(currentBoard, symbol, count);
         
-        console.log(`   🔧 Placed ${count} symbols of type ${symbol} for ${targetWinMultiplier.toFixed(1)}x target`);
-        console.log(`   📊 Enhanced board now has winning symbols: [${this.detectWinningSymbols(enhancedBoard).join(', ')}]`);
+        if (isSignificantWin) {
+            console.log(`   🔧 Placed ${count} symbols of type ${symbol} for ${targetWinMultiplier.toFixed(1)}x target`);
+            console.log(`   📊 Enhanced board now has winning symbols: [${this.detectWinningSymbols(enhancedBoard).join(', ')}]`);
+        }
         
         return { 
             newBoard: enhancedBoard, 

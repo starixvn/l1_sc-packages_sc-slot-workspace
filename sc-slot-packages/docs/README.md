@@ -13,6 +13,13 @@ Complete documentation for the slot board generation and pattern testing system.
   - Best practices and troubleshooting
 
 ### 🔧 **Technical Documentation**
+- **[Board Generation and Enhancement Guide](board-generation-and-enhancement-guide.md)** 🎯  
+  *Complete guide to single board generation and board enhancement processes*
+  - RTP-driven board generation workflow
+  - Intelligent board enhancement algorithms
+  - Settlement and tumble processing
+  - Symbol selection and payout calculations
+
 - **[Board Generation API](board-generation-api.md)** 🎰  
   *Technical reference for the board generation system*
   - Architecture overview and components

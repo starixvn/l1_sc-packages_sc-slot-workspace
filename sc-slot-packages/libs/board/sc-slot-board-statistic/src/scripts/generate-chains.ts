@@ -69,15 +69,15 @@ interface GenerationConfig {
 // Note: BetConfiguration interface and arrays are now imported from betSettings.ts
 
 /**
- * Find a valid bet level/coin value combination for a given bet amount
- * @param betAmount - Target bet amount
- * @returns BetConfiguration that produces the target bet amount
+ * Find a valid bet level/coin value combination for a given base bet amount
+ * @param baseBetAmount - Target base bet amount (before multiplier)
+ * @returns BetConfiguration that produces the target base bet amount
  */
-function findBetConfigForAmount(betAmount: number): BetConfiguration {
-    // Find the first valid combination that produces this bet amount
+function findBetConfigForAmount(baseBetAmount: number): BetConfiguration {
+    // Find the first valid combination that produces this base bet amount
     for (const betLevel of BET_LEVELS) {
         for (const coinValue of COIN_VALUES) {
-            if (Math.abs(betLevel * coinValue - betAmount) < 0.001) { // Handle floating point precision
+            if (Math.abs(betLevel * coinValue - baseBetAmount) < 0.001) { // Handle floating point precision
                 return { betLevel, coinValue };
             }
         }
@@ -86,7 +86,7 @@ function findBetConfigForAmount(betAmount: number): BetConfiguration {
     // Fallback: create a reasonable approximation
     // Find the closest bet level for coinValue = 1
     const closestBetLevel = BET_LEVELS.reduce((prev, curr) => 
-        Math.abs(curr - betAmount) < Math.abs(prev - betAmount) ? curr : prev
+        Math.abs(curr - baseBetAmount) < Math.abs(prev - baseBetAmount) ? curr : prev
     );
     
     return { betLevel: closestBetLevel, coinValue: 1 };
@@ -108,8 +108,9 @@ async function main() {
         console.log(`   Target RTP: ${(config.targetRTP * 100).toFixed(1)}%`);
         
         // Determine if using single or multiple bet amounts
+        // Note: For filename consistency, we use baseBetAmount (not totalBetAmount)
         const betAmounts = config.betAmounts || 
-            [config.betLevel! * config.coinValue! * commonDefinition.betSettings.defaultBetMultiplier];
+            [config.betLevel! * config.coinValue!]; // baseBetAmount only
 
         if (config.betAmounts) {
             console.log(`   Bet Amounts: ${betAmounts.length} unique amounts`);
@@ -117,7 +118,8 @@ async function main() {
         } else {
             console.log(`   Bet Level: ${config.betLevel}`);
             console.log(`   Coin Value: $${config.coinValue}`);
-            console.log(`   Bet Amount: $${betAmounts[0].toFixed(2)}`);
+            console.log(`   Base Bet Amount: $${betAmounts[0].toFixed(2)} (for filename)`);
+            console.log(`   Total Bet Amount: $${(betAmounts[0] * commonDefinition.betSettings.defaultBetMultiplier).toFixed(2)} (for RTP)`);
         }
         
         console.log(`   Max Retries: ${config.maxRetries}`);
@@ -156,22 +158,22 @@ async function main() {
         const results = [];
 
         // 🎯 ENHANCED LOOP: Support multiple bet amounts
-        for (const betAmount of betAmounts) {
+        for (const baseBetAmount of betAmounts) {
             if (betAmounts.length > 1) {
-                console.log(`💰 Processing bet amount: $${betAmount.toFixed(2)}`);
+                console.log(`💰 Processing base bet amount: $${baseBetAmount.toFixed(2)}`);
             }
             
             for (const pattern of config.patterns) {
                 for (const boardCount of config.boardCounts) {
                     const timestamp = Date.now();
-                    const betAmountStr = betAmount.toFixed(2).replace('.', '_');
-                    const chainName = `${pattern}-${boardCount}boards-bet${betAmountStr}-${timestamp}`;
+                    const baseBetAmountStr = baseBetAmount.toFixed(2).replace('.', '_');
+                    const chainName = `${pattern}-${boardCount}boards-bet${baseBetAmountStr}-${timestamp}`;
                     
                     console.log(`🎭 Generating: ${chainName}`);
                     
                     try {
-                        // Find a valid bet level/coin value combination for this bet amount
-                        const validConfig = findBetConfigForAmount(betAmount);
+                        // Find a valid bet level/coin value combination for this base bet amount
+                        const validConfig = findBetConfigForAmount(baseBetAmount);
                         
                         // Create config with current bet amount
                         const currentConfig = {
@@ -188,12 +190,14 @@ async function main() {
                         const filePath = join(config.outputDir, filename);
                         
                         const actualRTP = chainResult.actualRTP || 0;
-                        // Create bet data from current bet amount
+                        // Create bet data from current base bet amount
+                        const totalBetAmount = baseBetAmount * commonDefinition.betSettings.defaultBetMultiplier;
                         const betData = {
                             betLevel: validConfig.betLevel,
                             coinValue: validConfig.coinValue,
                             betMultiplier: commonDefinition.betSettings.defaultBetMultiplier,
-                            betAmount: betAmount
+                            baseBetAmount: baseBetAmount,
+                            totalBetAmount: totalBetAmount
                         };
 
                         const chainData = {
