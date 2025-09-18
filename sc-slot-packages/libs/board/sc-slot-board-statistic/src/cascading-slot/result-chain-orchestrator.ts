@@ -76,12 +76,6 @@ export class ResultChainOrchestrator {
         return { baseBetAmount, totalBetAmount };
     }
 
-    /**
-     * Calculate total bet amount (for backward compatibility)
-     */
-    private calculateBetSize(config: ResultChainConfig): number {
-        return this.calculateBetAmounts(config).totalBetAmount;
-    }
 
     /**
      * Initialize external settlement calculator (same pattern as statistic-runner)
@@ -109,13 +103,6 @@ export class ResultChainOrchestrator {
         }
     }
 
-    /**
-     * Reset cascade pattern counter for new test runs
-     */
-    public resetCascadePatternCounter(): void {
-        ResultChainOrchestrator.cascadePatternCounter = { twoTumbles: 0, threeTumbles: 0 };
-        console.log("🔄 Reset cascade pattern counter for new test run");
-    }
 
     /**
      * Generate result chain with RTP validation and retries
@@ -126,20 +113,17 @@ export class ResultChainOrchestrator {
         let bestRTP = 0;
         let attempts = 0;
 
-        // Reset cascade pattern counter for this generation run
-        this.resetCascadePatternCounter();
 
-        // Calculate bet size from configuration
-        const betSize = this.calculateBetSize(config);
-        const playerBudget = config.boardCount * betSize;
+        // Calculate bet amounts from configuration
+        const { totalBetAmount } = this.calculateBetAmounts(config);
 
         // Update RTP controller with new config
         this.rtpController.updateConfig({
             targetRTP: config.targetRTP,
             tolerance: config.tolerance,
             boardCount: config.boardCount,
-            betSize: betSize,
-            playerBudget: playerBudget,
+            betSize: totalBetAmount,
+            playerBudget: config.boardCount * totalBetAmount, // Legacy parameter (unused)
         });
 
         console.log(`🎯 Generating result chain: ${config.boardCount} boards, target RTP: ${(config.targetRTP * 100).toFixed(1)}%`);
@@ -198,20 +182,20 @@ export class ResultChainOrchestrator {
      */
     private async generateSingleChain(config: ResultChainConfig): Promise<BoardResult[]> {
         const boards: BoardResult[] = [];
-        const betSize = this.calculateBetSize(config);
+        const { totalBetAmount } = this.calculateBetAmounts(config);
 
         for (let i = 0; i < config.boardCount; i++) {
             const shouldWin = this.rtpController.shouldNextBoardWin(boards);
             const targetWinSize = shouldWin ? this.rtpController.getTargetWinSize(boards) : 0;
 
-            const boardResult = await this.generateSingleBoard(targetWinSize, betSize, i, config);
+            const boardResult = await this.generateSingleBoard(targetWinSize, totalBetAmount, i, config);
             boards.push(boardResult);
 
             // Adjust strategy if we're drifting from target
             if (i % 20 === 19) {
                 // Adjust every 20 boards
                 const currentRTP = boards.length > 0 
-                    ? boards.reduce((sum, board) => sum + (board.totalTumbleWin || 0), 0) / (boards.length * betSize) 
+                    ? boards.reduce((sum, board) => sum + (board.totalTumbleWin || 0), 0) / (boards.length * totalBetAmount) 
                     : 0;
                 
                 console.log(`📈 Progress: ${i + 1}/${config.boardCount} boards, current RTP: ${(currentRTP * 100).toFixed(2)}%`);
@@ -278,6 +262,8 @@ export class ResultChainOrchestrator {
 
         return bestBoard!;
     }
+
+
 
     /**
      * Process settlement using preGeneratedResult approach (guide-compliant)
