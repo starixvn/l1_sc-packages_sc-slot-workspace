@@ -6,6 +6,8 @@ export interface CreateResultChainInput {
     boardsData: any[];
     betLevel: number;
     coinValue: number;
+    totalBoardCount: number;
+    baseBetAmount: number;
 }
 
 export interface ResultChainFilter {
@@ -19,14 +21,16 @@ export class ResultChainRepository {
      * Create a new result chain in the database
      */
     async create(input: CreateResultChainInput): Promise<IResultChain> {
-        const { name, boardsData, betLevel, coinValue } = input;
+        const { name, boardsData, betLevel, coinValue, totalBoardCount, baseBetAmount } = input;
 
         try {
             const chainDoc = new ResultChain({
                 name,
                 boardsData,
                 betLevel,
-                coinValue
+                coinValue,
+                totalBoardCount,
+                baseBetAmount
             });
 
             const savedChain = await chainDoc.save();
@@ -135,7 +139,11 @@ export class ResultChainRepository {
                     for (const input of inputs) {
                         const chainDoc = new ResultChain({
                             name: input.name,
-                            boardsData: input.boardsData
+                            boardsData: input.boardsData,
+                            betLevel: input.betLevel,
+                            coinValue: input.coinValue,
+                            totalBoardCount: input.totalBoardCount,
+                            baseBetAmount: input.baseBetAmount
                         });
 
                         const savedChain = await chainDoc.save({ session });
@@ -246,6 +254,95 @@ export class ResultChainRepository {
             .limit(limit);
         } catch (error) {
             console.error('❌ Failed to find result chains by bet range:', error);
+            throw error;
+        }
+    }
+
+    /**
+     * Find chains by base bet amount for easy player selection
+     */
+    async findByBaseBetAmount(baseBetAmount: number, limit: number = 10): Promise<IResultChain[]> {
+        try {
+            return await ResultChain.find({
+                baseBetAmount
+            })
+            .sort({ createdAt: -1 })
+            .limit(limit);
+        } catch (error) {
+            console.error('❌ Failed to find result chains by base bet amount:', error);
+            throw error;
+        }
+    }
+
+    /**
+     * Find chains by total board count for session planning
+     */
+    async findByBoardCount(totalBoardCount: number, limit: number = 10): Promise<IResultChain[]> {
+        try {
+            return await ResultChain.find({
+                totalBoardCount
+            })
+            .sort({ createdAt: -1 })
+            .limit(limit);
+        } catch (error) {
+            console.error('❌ Failed to find result chains by board count:', error);
+            throw error;
+        }
+    }
+
+    /**
+     * Find chains within board count range
+     */
+    async findByBoardCountRange(minBoards: number, maxBoards: number, limit: number = 10): Promise<IResultChain[]> {
+        try {
+            return await ResultChain.find({
+                totalBoardCount: { $gte: minBoards, $lte: maxBoards }
+            })
+            .sort({ createdAt: -1 })
+            .limit(limit);
+        } catch (error) {
+            console.error('❌ Failed to find result chains by board count range:', error);
+            throw error;
+        }
+    }
+
+    /**
+     * Advanced player chain selection with multiple criteria
+     */
+    async findForPlayer(criteria: {
+        baseBetAmount?: number;
+        minBoardCount?: number;
+        maxBoardCount?: number;
+        betLevel?: number;
+        coinValue?: number;
+    }, limit: number = 10): Promise<IResultChain[]> {
+        try {
+            const query: any = {};
+
+            if (criteria.baseBetAmount !== undefined) {
+                query.baseBetAmount = criteria.baseBetAmount;
+            }
+            if (criteria.betLevel !== undefined) {
+                query.betLevel = criteria.betLevel;
+            }
+            if (criteria.coinValue !== undefined) {
+                query.coinValue = criteria.coinValue;
+            }
+            if (criteria.minBoardCount !== undefined || criteria.maxBoardCount !== undefined) {
+                query.totalBoardCount = {};
+                if (criteria.minBoardCount !== undefined) {
+                    query.totalBoardCount.$gte = criteria.minBoardCount;
+                }
+                if (criteria.maxBoardCount !== undefined) {
+                    query.totalBoardCount.$lte = criteria.maxBoardCount;
+                }
+            }
+
+            return await ResultChain.find(query)
+                .sort({ createdAt: -1 })
+                .limit(limit);
+        } catch (error) {
+            console.error('❌ Failed to find result chains for player:', error);
             throw error;
         }
     }

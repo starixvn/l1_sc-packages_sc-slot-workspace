@@ -199,6 +199,7 @@ Examples:
   npm run import-chains -- --created-by-filter "my-test"
 
 Note: This script scans JSON files created by 'npm run generate-chains' and imports them into MongoDB.
+      Enhanced with totalBoardCount and baseBetAmount fields for efficient player chain selection.
 `);
 }
 
@@ -293,12 +294,28 @@ async function importSingleFile(
             }
         }
         
+        // Calculate derived fields for easy player chain selection
+        const totalBoardCount = chainData.boards?.length || 0; // Total number of boards in the chain
+        const betLevel = metadata.betData?.betLevel || chainData.config?.betLevel || 0.5;
+        const coinValue = metadata.betData?.coinValue || chainData.config?.coinValue || 0.1;
+        const baseBetAmount = betLevel * coinValue; // Pre-calculated base bet amount (betLevel * coinValue)
+
+        // Validate calculated fields
+        if (totalBoardCount === 0) {
+            throw new Error('Chain has no boards data');
+        }
+        if (baseBetAmount <= 0) {
+            throw new Error(`Invalid base bet amount: ${baseBetAmount}`);
+        }
+
         // Prepare simplified chain input for main collection
         const chainInput: CreateResultChainInput = {
             name: metadata.name,
             boardsData: chainData.boards,
-            betLevel: metadata.betData?.betLevel || chainData.config?.betLevel || 0.5,
-            coinValue: metadata.betData?.coinValue || chainData.config?.coinValue || 0.1
+            betLevel: betLevel,
+            coinValue: coinValue,
+            totalBoardCount: totalBoardCount,
+            baseBetAmount: baseBetAmount
         };
         
         // Insert main chain record into database
@@ -338,7 +355,7 @@ async function importSingleFile(
         const statsResult = await statsRepository.create(statsInput);
         
         stats.successful++;
-        console.log(`   ✅ Imported ${fileName} - Chain ID: ${chainResult._id.toString().substring(0, 8)}... Stats ID: ${statsResult._id.toString().substring(0, 8)}... RTP: ${(metadata.actualRTP * 100).toFixed(2)}%`);
+        console.log(`   ✅ Imported ${fileName} - Chain ID: ${chainResult._id.toString().substring(0, 8)}... Stats ID: ${statsResult._id.toString().substring(0, 8)}... RTP: ${(metadata.actualRTP * 100).toFixed(2)}% Boards: ${totalBoardCount} BaseBet: ${baseBetAmount.toFixed(4)}`);
         
     } catch (error) {
         stats.failed++;

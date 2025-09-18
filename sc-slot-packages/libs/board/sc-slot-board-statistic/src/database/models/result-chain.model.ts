@@ -6,6 +6,8 @@ export interface IResultChain extends Document {
     boardsData: any[];
     betLevel: number;
     coinValue: number;
+    totalBoardCount: number;
+    baseBetAmount: number;
     createdAt: Date;
 }
 
@@ -44,6 +46,18 @@ const ResultChainSchema = new Schema<IResultChain>({
         max: 1.0,
         default: 0.1,
         index: true
+    },
+    totalBoardCount: {
+        type: Number,
+        required: true,
+        min: 1,
+        index: true
+    },
+    baseBetAmount: {
+        type: Number,
+        required: true,
+        min: 0.01,
+        index: true
     }
 }, {
     timestamps: { createdAt: true, updatedAt: false },
@@ -54,6 +68,9 @@ const ResultChainSchema = new Schema<IResultChain>({
 ResultChainSchema.index({ name: 1 });
 ResultChainSchema.index({ createdAt: -1 });
 ResultChainSchema.index({ betLevel: 1, coinValue: 1 }); // For player bet selection
+ResultChainSchema.index({ totalBoardCount: 1 }); // For board count filtering
+ResultChainSchema.index({ baseBetAmount: 1 }); // For bet amount filtering
+ResultChainSchema.index({ betLevel: 1, coinValue: 1, totalBoardCount: 1, baseBetAmount: 1 }); // Composite index for player selection
 
 // Static methods
 ResultChainSchema.statics.findByName = function(name: string) {
@@ -67,7 +84,7 @@ ResultChainSchema.statics.findRecent = function(limit: number = 10) {
 // Post-save middleware
 ResultChainSchema.post('save', function(doc) {
     const boardCount = doc.boardsData?.length || 0;
-    console.log(`📊 Result chain saved: ${doc.name} (${boardCount} boards)`);
+    console.log(`📊 Result chain saved: ${doc.name} (${boardCount} boards, baseBet: ${doc.baseBetAmount})`);
 });
 
 // Create and export the model
