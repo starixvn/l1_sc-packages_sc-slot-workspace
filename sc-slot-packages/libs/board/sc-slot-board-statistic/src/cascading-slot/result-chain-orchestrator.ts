@@ -65,13 +65,24 @@ export class ResultChainOrchestrator {
     }
 
     /**
-     * Calculate bet size from bet configuration
+     * Calculate bet amounts from bet configuration
      */
-    private calculateBetSize(config: ResultChainConfig): number {
+    private calculateBetAmounts(config: ResultChainConfig): { baseBetAmount: number; totalBetAmount: number } {
         const coinValue = config.coinValue || 0.1;
         const betLevel = config.betLevel || 0.5;
         const betMultiplier = 20; // Standard multiplier
-        return coinValue * betLevel * betMultiplier;
+        
+        const baseBetAmount = coinValue * betLevel;
+        const totalBetAmount = baseBetAmount * betMultiplier;
+        
+        return { baseBetAmount, totalBetAmount };
+    }
+
+    /**
+     * Calculate total bet amount (for backward compatibility)
+     */
+    private calculateBetSize(config: ResultChainConfig): number {
+        return this.calculateBetAmounts(config).totalBetAmount;
     }
 
     /**
@@ -435,16 +446,18 @@ export class ResultChainOrchestrator {
         round: Round,
         betSize: number
     ): Promise<BoardResult> {
-        // Calculate bet details for chain data
-        const coinValue = round.coinValue;
-        const betLevel = round.betLevel;
-        const betMultiplier = round.betMultiplier;
-
+        // Calculate bet details for chain data and correct payout calculations
+        const coinValue = round.coinValue || 0.1;
+        const betLevel = round.betLevel || 0.5;
+        const betMultiplier = round.betMultiplier || 20;
+        const baseBetAmount = coinValue * betLevel;
+        
         // Use internal board processing instead of external calculator to ensure board continuity
         const tumbleProcessingResult = await this.processTumblesWithBoardGenerator(
             initialBoard.newBoard,
             initialBoard.multipliers || [],
-            betSize
+            betSize, // totalBetAmount (for RTP calculations)
+            baseBetAmount // baseBetAmount (for payout calculations)
         );
         
         
@@ -617,7 +630,8 @@ export class ResultChainOrchestrator {
     private async processTumblesWithBoardGenerator(
         initialBoard: number[], 
         initialMultipliers: number[], 
-        betSize: number
+        totalBetAmount: number,
+        baseBetAmount: number
     ): Promise<{ tumbles: any[], totalWin: number }> {
         const boardGenerator = this.boardGeneratorFactory();
         const tumbles: any[] = [];
@@ -648,8 +662,8 @@ export class ResultChainOrchestrator {
             // explodedSymbols[i] = -1 (NO_SYMBOL) for not exploded, winning symbol value for exploded
             
             
-            // Calculate win for this tumble
-            const tumbleWin = this.calculateTumbleWin(winSymbols, betSize);
+            // Calculate win for this tumble using correct payout rules
+            const tumbleWin = this.calculateTumbleWin(winSymbols, baseBetAmount);
             totalWin += tumbleWin;
             
             // Create tumble data with BoardGenerator format (CORRECT)
@@ -659,7 +673,7 @@ export class ResultChainOrchestrator {
                 explodedSymbols: tumbleResult.explodedSymbols,     // ✅ CORRECT: -1 for not exploded, symbol value for exploded
                 newSymbols: tumbleResult.newSymbols,               // ✅ Keep BoardGenerator cascading physics
                 multipliers: tumbleResult.multipliers || [],
-                icons: this.createIconsData(winSymbols, tumbleWin, currentBoard),
+                icons: this.createIconsData(winSymbols, tumbleWin, currentBoard, baseBetAmount),
                 win: tumbleWin
             };
             
@@ -691,14 +705,14 @@ export class ResultChainOrchestrator {
     /**
      * 🎯 EMPTY TUMBLES FIX: Enhance board to have winning symbols for target win
      */
-    private enhanceBoardForTargetWin(board: { newBoard: number[]; multipliers: number[] }, targetWin: number, betSize: number): { newBoard: number[]; multipliers: number[] } {
+    private enhanceBoardForTargetWin(board: { newBoard: number[]; multipliers: number[] }, targetWin: number, totalBetAmount: number): { newBoard: number[]; multipliers: number[] } {
         const currentBoard = [...board.newBoard];
         const currentMultipliers = [...board.multipliers];
         
         // Analyze current board state
         const analysis = this.analyzeBoard(currentBoard);
         
-        console.log(`🎯 Enhancing board for target win: ${targetWin.toFixed(2)} (${(targetWin/betSize).toFixed(1)}x bet)`);
+        console.log(`🎯 Enhancing board for target win: ${targetWin.toFixed(2)} (${(targetWin/totalBetAmount).toFixed(1)}x total bet)`);
         console.log(`   Current winning symbols: [${analysis.winningSymbols.join(', ')}]`);
         console.log(`   Near-win symbols: ${analysis.nearWinSymbols.map(s => `${s.symbol}(${s.count})`).join(', ')}`);
         
@@ -708,8 +722,8 @@ export class ResultChainOrchestrator {
             return { newBoard: currentBoard, multipliers: currentMultipliers };
         }
         
-        // Determine target symbol and count based on win size
-        const targetWinMultiplier = targetWin / betSize;
+        // Determine target symbol and count based on win size (using total bet for multiplier display)
+        const targetWinMultiplier = targetWin / totalBetAmount;
         const { symbol, count } = this.determineTargetSymbolForWin(targetWinMultiplier, analysis);
         
         // Place symbols strategically to create win
@@ -904,15 +918,15 @@ export class ResultChainOrchestrator {
 
     /**
      * Calculate win amount for a tumble based on winning symbols
+     * Following correct payout rules: payoutWin = baseBetAmount * winningSymbol[count].odds
      */
-    private calculateTumbleWin(winSymbols: number[], betSize: number): number {
-        // Simple calculation based on symbol values and odds
+    private calculateTumbleWin(winSymbols: number[], baseBetAmount: number): number {
         let totalWin = 0;
         
         winSymbols.forEach(symbol => {
-            // Basic payout calculation (this should match the actual game rules)
-            const baseOdds = this.getSymbolOdds(symbol);
-            totalWin += baseOdds * betSize;
+            // Correct payout calculation: baseBetAmount * odds (not totalBetAmount * odds)
+            const symbolOdds = this.getSymbolOdds(symbol);
+            totalWin += baseBetAmount * symbolOdds;
         });
         
         return totalWin;
@@ -971,8 +985,9 @@ export class ResultChainOrchestrator {
 
     /**
      * Create icons data in the expected format
+     * Note: This method needs baseBetAmount for correct win calculations
      */
-    private createIconsData(winSymbols: number[], totalWin: number, board: number[]): { [symbol: string]: { count: number, odds: number, win: number } } {
+    private createIconsData(winSymbols: number[], totalWin: number, board: number[], baseBetAmount: number = 0.05): { [symbol: string]: { count: number, odds: number, win: number } } {
         const icons: { [symbol: string]: { count: number, odds: number, win: number } } = {};
         
         // Count actual symbols on board for accurate icons data
@@ -989,7 +1004,7 @@ export class ResultChainOrchestrator {
             icons[symbol.toString()] = {
                 count,
                 odds,
-                win: odds * 0.05 // Base win calculation (should match game rules)
+                win: baseBetAmount * odds // Correct win calculation: baseBetAmount * odds
             };
         });
         
@@ -1186,10 +1201,13 @@ export class ResultChainOrchestrator {
             const freeSpinBoard = boardGenerator.generate();
             
             // Process the board for wins
+            const totalBetAmount = baseRound.totalAmount || 1;
+            const baseBetAmount = totalBetAmount / 20; // Assuming standard 20x multiplier
             const tumbleResult = await this.processTumblesWithBoardGenerator(
                 freeSpinBoard.newBoard,
                 freeSpinBoard.multipliers,
-                baseRound.totalAmount || 1
+                totalBetAmount,
+                baseBetAmount
             );
             
             const win = tumbleResult.totalWin;

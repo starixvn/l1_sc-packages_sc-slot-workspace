@@ -477,16 +477,20 @@ async function generateChain(patternType: string, boardCount: number, config: Ge
     try {
         const startTime = Date.now();
         
-        // Calculate bet size from configuration
-        const betSize = (config.coinValue || 0.1) * (config.betLevel || 0.5) * 20;
+        // Calculate bet amounts following correct rules
+        const coinValue = config.coinValue || 0.1;
+        const betLevel = config.betLevel || 0.5;
+        const betMultiplier = 20;
+        const baseBetAmount = coinValue * betLevel;
+        const totalBetAmount = baseBetAmount * betMultiplier;
         
-        // Create RTP configuration
+        // Create RTP configuration (RTP calculations use totalBetAmount)
         const rtpConfig = {
             targetRTP: config.targetRTP,
             tolerance: config.tolerance,
             boardCount: boardCount,
-            betSize: betSize,
-            playerBudget: boardCount * betSize,
+            betSize: totalBetAmount, // RTP calculations use total bet amount
+            playerBudget: boardCount * totalBetAmount,
         };
 
         // ===============================
@@ -527,8 +531,8 @@ async function generateChain(patternType: string, boardCount: number, config: Ge
 
         const executionTime = Date.now() - startTime;
 
-        // Calculate metrics
-        const totalWagered = chainResult.boards.length * betSize;
+        // Calculate metrics (use totalBetAmount for wagering calculations)
+        const totalWagered = chainResult.boards.length * totalBetAmount;
         let totalWon = 0;
         let featuresTriggered = 0;
         let freeSpinsWon = 0;
@@ -548,7 +552,7 @@ async function generateChain(patternType: string, boardCount: number, config: Ge
             if (boardWin === 0) {
                 winDistribution.losses++;
             } else {
-                const multiplier = boardWin / betSize;
+                const multiplier = boardWin / totalBetAmount; // Correct multiplier calculation
                 if (multiplier <= 1) winDistribution.smallWins++;
                 else if (multiplier <= 5) winDistribution.mediumWins++;
                 else winDistribution.bigWins++;
