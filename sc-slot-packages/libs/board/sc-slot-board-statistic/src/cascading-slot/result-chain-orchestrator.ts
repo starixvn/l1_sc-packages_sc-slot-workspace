@@ -3,7 +3,7 @@ import RoundCalculator from "sc-cascading-slot-base/src/board/round-calculator";
 import TumbleCalculator from "sc-cascading-slot-base/src/board/tumble-calculator";
 import { prop } from "ramda";
 import { RTPController, RTPConfiguration, RTPResult, BoardResult } from "./rtp-controller.js";
-import { Round, Statistic, calculateStatistic } from "./statistic-calculator.js";
+import { Round } from "./statistic-calculator.js";
 import { commonDefinition, defaultOdds } from "./generator-definition.js";
 import { Difficulty } from "sc-slot-board-generator";
 import { ChainValidator } from "./chain-validator.js";
@@ -54,14 +54,12 @@ export interface BoardGeneratorInterface {
 export class ResultChainOrchestrator {
     private readonly rtpController: RTPController;
     private roundCalculator?: RoundCalculator;
-    private externalCalculatorAvailable: boolean;
 
     constructor(
         private boardGeneratorFactory: () => BoardGeneratorInterface,
         rtpConfig: RTPConfiguration
     ) {
         this.rtpController = new RTPController(rtpConfig);
-        this.externalCalculatorAvailable = this.initializeExternalCalculator();
     }
 
     /**
@@ -281,163 +279,6 @@ export class ResultChainOrchestrator {
         return bestBoard!;
     }
 
-    private static cascadePatternCounter = { twoTumbles: 0, threeTumbles: 0 };
-
-    /**
-     * Determine cascade pattern for a board (0=no cascade, 1=2 tumbles, 2=3 tumbles)
-     * Ensures exactly 1 board with 2 tumbles and 1 board with 3 tumbles in our test
-     */
-    private determineCascadePattern(board: number[], betSize: number): number {
-        // For our specific test requirements: exactly 1 board with 2 tumbles, 1 board with 3 tumbles
-        
-        // Strategy: Use board index or characteristics to determine pattern
-        const boardSum = board.reduce((sum, symbol) => sum + symbol, 0);
-        const boardVariance = board.filter((symbol, index) => symbol !== board[0]).length;
-        
-        // Assign patterns based on board characteristics to ensure diversity
-        if (ResultChainOrchestrator.cascadePatternCounter.threeTumbles === 0 && boardSum % 3 === 0) {
-            ResultChainOrchestrator.cascadePatternCounter.threeTumbles = 1;
-            console.log("🎯 Assigning 3-tumble pattern (2 cascades) to board");
-            return 2; // 3 tumbles (2 cascades)
-        } else if (ResultChainOrchestrator.cascadePatternCounter.twoTumbles === 0 && boardVariance > 15) {
-            ResultChainOrchestrator.cascadePatternCounter.twoTumbles = 1;
-            console.log("🎯 Assigning 2-tumble pattern (1 cascade) to board");
-            return 1; // 2 tumbles (1 cascade)  
-        } else {
-            console.log("🎯 Assigning single tumble (no cascade) to board");
-            return 0; // 1 tumble (no cascade)
-        }
-    }
-
-    /**
-     * Generate preGeneratedResult structure according to guide
-     */
-    private generatePreGeneratedResult(
-        initialBoard: number[], 
-        initialMultipliers: number[], 
-        cascadePattern: number
-    ): any[] {
-        const preGeneratedResult: any[] = [];
-        
-        if (cascadePattern === 0) {
-            // Single tumble - no cascade
-            preGeneratedResult.push({
-                newBoard: [...initialBoard],
-                multipliers: [...initialMultipliers],
-                icons: {},
-                explodedSymbols: [],
-                newSymbols: []
-            });
-        } else if (cascadePattern === 1) {
-            // 2 tumbles = 2 array items
-            // Item 1: Creates first tumble (winner with 8s)
-            const firstBoard = this.createWinningBoard(initialBoard, 8);
-            preGeneratedResult.push({
-                newBoard: firstBoard,
-                multipliers: [...initialMultipliers],
-                icons: {},
-                explodedSymbols: [], // Not used for tumble creation
-                newSymbols: []       // Not used for tumble creation
-            });
-            
-            // Item 2: Provides explodedSymbols to first tumble + creates second tumble (no wins)
-            const explodedSymbols = this.generateExplodedSymbols(firstBoard, 8);
-            const finalBoard = this.applyExplosionAndRefill(firstBoard, explodedSymbols);
-            preGeneratedResult.push({
-                newBoard: finalBoard,
-                multipliers: [...initialMultipliers],
-                icons: {},
-                explodedSymbols: explodedSymbols,
-                newSymbols: this.calculateNewSymbols(firstBoard, finalBoard, explodedSymbols)
-            });
-        } else if (cascadePattern === 2) {
-            // 3 tumbles = 3 array items
-            // Item 1: Creates first tumble (winner with 8s)
-            const firstBoard = this.createWinningBoard(initialBoard, 8);
-            preGeneratedResult.push({
-                newBoard: firstBoard,
-                multipliers: [...initialMultipliers],
-                icons: {},
-                explodedSymbols: [],
-                newSymbols: []
-            });
-            
-            // Item 2: Provides explodedSymbols to first tumble + creates second tumble (winner with 7s)
-            const firstExploded = this.generateExplodedSymbols(firstBoard, 8);
-            const secondBoard = this.createWinningBoard(
-                this.applyExplosionAndRefill(firstBoard, firstExploded), 7
-            );
-            preGeneratedResult.push({
-                newBoard: secondBoard,
-                multipliers: [...initialMultipliers],
-                icons: {},
-                explodedSymbols: firstExploded,
-                newSymbols: this.calculateNewSymbols(firstBoard, secondBoard, firstExploded)
-            });
-            
-            // Item 3: Provides explodedSymbols to second tumble + creates third tumble (no wins)
-            const secondExploded = this.generateExplodedSymbols(secondBoard, 7);
-            const finalBoard = this.applyExplosionAndRefill(secondBoard, secondExploded);
-            preGeneratedResult.push({
-                newBoard: finalBoard,
-                multipliers: [...initialMultipliers],
-                icons: {},
-                explodedSymbols: secondExploded,
-                newSymbols: this.calculateNewSymbols(secondBoard, finalBoard, secondExploded)
-            });
-        }
-        
-        return preGeneratedResult;
-    }
-
-    /**
-     * Create a board with winning symbols at the beginning
-     */
-    private createWinningBoard(baseBoard: number[], winningSymbol: number): number[] {
-        const board = [...baseBoard];
-        // Place winning symbols in first 3 positions to guarantee a win
-        board[0] = winningSymbol;
-        board[1] = winningSymbol;  
-        board[2] = winningSymbol;
-        return board;
-    }
-
-    /**
-     * Generate explodedSymbols array for a winning symbol
-     */
-    private generateExplodedSymbols(board: number[], winningSymbol: number): number[] {
-        return board.map(symbol => symbol === winningSymbol ? winningSymbol : -1);
-    }
-
-    /**
-     * Apply explosion and refill logic
-     */
-    private applyExplosionAndRefill(board: number[], explodedSymbols: number[]): number[] {
-        const newBoard = [...board];
-        for (let i = 0; i < explodedSymbols.length; i++) {
-            if (explodedSymbols[i] !== -1) {
-                // Replace exploded symbol with random new symbol
-                newBoard[i] = Math.floor(Math.random() * 7); // 0-6 for normal symbols
-            }
-        }
-        return newBoard;
-    }
-
-    /**
-     * Calculate which symbols are new (dropped in)
-     */
-    private calculateNewSymbols(originalBoard: number[], newBoard: number[], explodedSymbols: number[]): number[] {
-        const newSymbols: number[] = [];
-        for (let i = 0; i < originalBoard.length; i++) {
-            if (explodedSymbols[i] !== -1) {
-                newSymbols[i] = newBoard[i]; // This position got a new symbol
-            } else {
-                newSymbols[i] = -1; // No change at this position
-            }
-        }
-        return newSymbols;
-    }
-
     /**
      * Process settlement using preGeneratedResult approach (guide-compliant)
      */
@@ -531,98 +372,7 @@ export class ResultChainOrchestrator {
         return boardResult;
     }
 
-    /**
-     * Fix explodedSymbols in tumbles using BoardGenerator (for external calculator results)  
-     */
-    private async fixExplodedSymbolsInTumbles(originalTumbles: any[], initialBoard: number[], initialMultipliers: number[]): Promise<any[]> {
-        const boardGenerator = this.boardGeneratorFactory();
-        const fixedTumbles: any[] = [];
-        let currentBoard = [...initialBoard];
-        let currentMultipliers = [...initialMultipliers];
 
-        for (const originalTumble of originalTumbles) {
-            if (originalTumble.explodedSymbols && originalTumble.explodedSymbols.some((s: number) => s !== -1)) {
-                // External calculator found winning symbols - extract them from exploded positions
-                const winSymbols: number[] = [];
-                const explodedPositions: number[] = [];
-                
-                originalTumble.explodedSymbols.forEach((symbol: number, position: number) => {
-                    if (symbol !== -1) {
-                        winSymbols.push(symbol);
-                        explodedPositions.push(position);
-                    }
-                });
-
-                // Get unique winning symbols
-                const uniqueWinSymbols = [...new Set(winSymbols)];
-
-                // Use BoardGenerator to get correct newBoard and newSymbols based on actual exploded positions
-                const boardGeneratorResult = boardGenerator.explodeAndRefill(
-                    currentBoard, 
-                    uniqueWinSymbols, 
-                    currentMultipliers
-                );
-
-                // Create fixed tumble keeping external calculator's exploded positions (which are correct)
-                // but using BoardGenerator for newBoard and newSymbols
-                const fixedTumble = {
-                    ...originalTumble, // Keep all external calculator data (icons, win, etc.)
-                    originalBoard: currentBoard.join(','),
-                    newBoard: originalTumble.newBoard || boardGeneratorResult.newBoard.join(','), // Prefer external calc newBoard
-                    explodedSymbols: originalTumble.explodedSymbols, // ✅ Keep external calculator's exploded positions (they know game rules)
-                    newSymbols: boardGeneratorResult.newSymbols || originalTumble.newSymbols, // Use BoardGenerator newSymbols if available
-                    multipliers: boardGeneratorResult.multipliers || currentMultipliers
-                };
-
-                fixedTumbles.push(fixedTumble);
-
-                // Update board state for next tumble - use the actual new board from external calculator
-                if (originalTumble.newBoard) {
-                    currentBoard = originalTumble.newBoard.split(',').map(Number);
-                } else {
-                    currentBoard = boardGeneratorResult.newBoard;
-                }
-                currentMultipliers = boardGeneratorResult.multipliers || currentMultipliers;
-            } else {
-                // No wins - keep original tumble as-is but update board tracking
-                fixedTumbles.push(originalTumble);
-                if (originalTumble.newBoard) {
-                    currentBoard = originalTumble.newBoard.split(',').map(Number);
-                }
-            }
-        }
-
-        return fixedTumbles;
-    }
-
-    /**
-     * Fallback simulation when external calculator not available
-     */
-    private simulateBoardResult(initialBoard: { newBoard: number[]; multipliers: number[] }, betSize: number): BoardResult {
-        return {
-            board: initialBoard.newBoard,
-            multipliers: initialBoard.multipliers,
-            payoutResult: undefined,
-            cascadeCount: 0,
-            totalCascadeWin: 0, // DEPRECATED: Use totalTumbleWin instead
-            isFreeSpin: false,
-            accumulatedMultiplier: 0,
-            remainingFreeSpins: 0,
-            freeSpinsPlayed: 0,
-            freeSpinWins: 0,
-            freeSpinBoards: undefined,
-            settlementResult: {
-                tumbles: [],
-                freeSpins: { count: 0, odds: 0 },
-                additionalFreeSpins: { count: 0, odds: 0 }
-            },
-            totalTumbleWin: 0,
-            betLevel: 1,
-            coinValue: 0.1,
-            betMultiplier: 10,
-            betAmount: 1
-        };
-    }
 
     /**
      * Process tumbles using BoardGenerator and convert to proper cascading slot format

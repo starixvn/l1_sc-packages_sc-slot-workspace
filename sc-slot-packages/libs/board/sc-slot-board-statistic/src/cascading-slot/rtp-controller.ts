@@ -1,4 +1,4 @@
-import { sum, mean, map, filter, reduce, range } from "ramda";
+import { sum, mean, map, filter } from "ramda";
 
 export interface RTPConfiguration {
     targetRTP: number; // e.g., 0.97 for 97%
