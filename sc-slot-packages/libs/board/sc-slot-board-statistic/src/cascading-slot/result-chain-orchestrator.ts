@@ -7,6 +7,7 @@ import { Round } from "./statistic-calculator.js";
 import { commonDefinition, defaultOdds } from "./generator-definition.js";
 import { Difficulty } from "sc-slot-board-generator";
 import { ChainValidator } from "./chain-validator.js";
+import { BoardEnhancementOrchestrator } from "./enhancement/board-enhancement-orchestrator.js";
 
 // Import board generator from the other package
 // Note: This will require adding sc-slot-board-generator as dependency
@@ -53,6 +54,7 @@ export interface BoardGeneratorInterface {
 
 export class ResultChainOrchestrator {
     private readonly rtpController: RTPController;
+    private readonly enhancementOrchestrator: BoardEnhancementOrchestrator;
     private roundCalculator?: RoundCalculator;
 
     constructor(
@@ -60,6 +62,7 @@ export class ResultChainOrchestrator {
         rtpConfig: RTPConfiguration
     ) {
         this.rtpController = new RTPController(rtpConfig);
+        this.enhancementOrchestrator = new BoardEnhancementOrchestrator();
     }
 
     /**
@@ -227,7 +230,7 @@ export class ResultChainOrchestrator {
             
             // 🎯 FIX FOR EMPTY TUMBLES: If target win > 0, ensure board has winning symbols
             if (targetWin > 0) {
-                initialBoard = this.enhanceBoardForTargetWin(initialBoard, targetWin, betSize);
+                initialBoard = await this.enhanceBoardForTargetWin(initialBoard, targetWin, betSize);
             }
             
             // Create round for settlement processing using config bet parameters
@@ -459,67 +462,71 @@ export class ResultChainOrchestrator {
     }
 
     /**
-     * 🎯 EMPTY TUMBLES FIX: Enhance board to have winning symbols for target win
+     * 🎯 ENHANCED BOARD PROCESSING: Use new modular system for target win achievement
      */
-    private enhanceBoardForTargetWin(board: { newBoard: number[]; multipliers: number[] }, targetWin: number, totalBetAmount: number): { newBoard: number[]; multipliers: number[] } {
+    private async enhanceBoardForTargetWin(board: { newBoard: number[]; multipliers: number[] }, targetWin: number, totalBetAmount: number): Promise<{ newBoard: number[]; multipliers: number[] }> {
         const enhancementStart = Date.now();
-        const maxEnhancementTime = 5000; // 5 second timeout for enhancement
-        
-        const currentBoard = [...board.newBoard];
-        const currentMultipliers = [...board.multipliers];
-        
-        // Analyze current board state
-        const analysis = this.analyzeBoard(currentBoard);
+        const maxEnhancementTime = 10000; // 10 second timeout (increased from 5s)
         
         // Only log enhancement details for meaningful wins (2x+ multiplier) to reduce noise
+        const targetMultiplier = targetWin / totalBetAmount;
         const isSignificantWin = targetWin > totalBetAmount * 2; // 2x+ multiplier
+        
         if (isSignificantWin) {
-            console.log(`🎯 Enhancing board for target win: ${targetWin.toFixed(2)} (${(targetWin/totalBetAmount).toFixed(1)}x total bet)`);
-            console.log(`   Current winning symbols: [${analysis.winningSymbols.join(', ')}]`);
-            console.log(`   Near-win symbols: ${analysis.nearWinSymbols.map(s => `${s.symbol}(${s.count})`).join(', ')}`);
+            console.log(`🎯 Enhancing board for target win: ${targetWin.toFixed(2)} (${targetMultiplier.toFixed(1)}x total bet)`);
         }
         
-        // If already has winning symbols, return as-is (avoid over-enhancement)
-        if (analysis.winningSymbols.length > 0) {
+        try {
+            // Use the new enhanced board processing system
+            const enhancementRequest = {
+                board: [...board.newBoard],
+                multipliers: [...board.multipliers],
+                targetWin,
+                totalBetAmount,
+                maxEnhancementTime
+            };
+            
+            const result = await this.enhancementOrchestrator.enhanceBoard(enhancementRequest);
+            
+            // Log results for significant wins
             if (isSignificantWin) {
-                console.log(`   ✅ Board already has winning symbols, using as-is`);
+                console.log(`   ✅ Enhancement completed: ${result.strategy} (${result.actualMultiplier.toFixed(1)}x achieved)`);
+                if (result.symbolsPlaced.length > 0) {
+                    result.symbolsPlaced.forEach(placement => {
+                        console.log(`   🔧 ${placement.reason}`);
+                    });
+                }
             }
-            return { newBoard: currentBoard, multipliers: currentMultipliers };
+            
+            return {
+                newBoard: result.enhancedBoard,
+                multipliers: result.enhancedMultipliers
+            };
+            
+        } catch (error) {
+            const duration = Date.now() - enhancementStart;
+            console.warn(`⚠️  Enhanced board processing failed after ${duration}ms: ${error.message}`);
+            console.warn(`   Falling back to original board`);
+            
+            // Fallback to original board
+            return {
+                newBoard: [...board.newBoard],
+                multipliers: [...board.multipliers]
+            };
         }
-        
-        // Check timeout before expensive operations
-        if (Date.now() - enhancementStart > maxEnhancementTime) {
-            console.warn(`⚠️  Board enhancement timeout, returning original board`);
-            return { newBoard: currentBoard, multipliers: currentMultipliers };
-        }
-        
-        // Determine target symbol and count based on win size (using total bet for multiplier display)
-        const targetWinMultiplier = targetWin / totalBetAmount;
-        const { symbol, count } = this.determineTargetSymbolForWin(targetWinMultiplier, analysis);
-        
-        // Place symbols strategically to create win
-        const enhancedBoard = this.placeWinningSymbols(currentBoard, symbol, count);
-        
-        if (isSignificantWin) {
-            console.log(`   🔧 Placed ${count} symbols of type ${symbol} for ${targetWinMultiplier.toFixed(1)}x target`);
-            console.log(`   📊 Enhanced board now has winning symbols: [${this.detectWinningSymbols(enhancedBoard).join(', ')}]`);
-        }
-        
-        return { 
-            newBoard: enhancedBoard, 
-            multipliers: currentMultipliers 
-        };
     }
 
     /**
-     * Analyze board state for intelligent symbol placement
+     * Analyze board state for intelligent symbol placement with enhanced near-win detection
      */
     private analyzeBoard(board: number[]): {
         symbolCounts: { [symbol: number]: number };
         winningSymbols: number[];
-        nearWinSymbols: { symbol: number; count: number; needed: number }[];
+        nearWinSymbols: { symbol: number; count: number; needed: number; priority: number; expectedPayout: number }[];
         emptyPositions: number[];
         winPotential: 'none' | 'low' | 'medium' | 'high';
+        boardDensity: number;
+        symbolDistribution: { [reel: number]: number[] };
     } {
         const symbolCounts: { [symbol: number]: number } = {};
         const emptyPositions: number[] = [];
@@ -541,26 +548,57 @@ export class ResultChainOrchestrator {
             }
         });
         
-        // Identify near-win symbols (5-7)
-        const nearWinSymbols: { symbol: number; count: number; needed: number }[] = [];
+        // Enhanced near-win symbols analysis (4-7 count with priority scoring)
+        const nearWinSymbols: { symbol: number; count: number; needed: number; priority: number; expectedPayout: number }[] = [];
         Object.entries(symbolCounts).forEach(([symbol, count]) => {
-            if (count >= 5 && count <= 7) {
+            if (count >= 4 && count <= 7) {
+                const symbolNum = parseInt(symbol);
+                const needed = 8 - count;
+                const expectedPayout = this.getSymbolOdds(symbolNum, 8); // Base payout for 8 symbols
+                
+                // Priority calculation: closer to win + higher payout = higher priority
+                const distanceFactor = (8 - needed) / 4; // 0.25 to 1.0
+                const payoutFactor = Math.min(expectedPayout / 100, 1); // Normalize high payouts
+                const priority = distanceFactor * 0.7 + payoutFactor * 0.3;
+                
                 nearWinSymbols.push({
-                    symbol: parseInt(symbol),
+                    symbol: symbolNum,
                     count: count,
-                    needed: 8 - count
+                    needed: needed,
+                    priority: priority,
+                    expectedPayout: expectedPayout
                 });
             }
         });
         
-        // Determine win potential
+        // Sort by priority (highest first)
+        nearWinSymbols.sort((a, b) => b.priority - a.priority);
+        
+        // Enhanced win potential calculation
         let winPotential: 'none' | 'low' | 'medium' | 'high' = 'none';
         if (winningSymbols.length > 0) {
             winPotential = 'high';
-        } else if (nearWinSymbols.length >= 2) {
+        } else if (nearWinSymbols.length >= 3 || nearWinSymbols.some(s => s.needed <= 2)) {
             winPotential = 'medium';
-        } else if (nearWinSymbols.length === 1) {
+        } else if (nearWinSymbols.length >= 1) {
             winPotential = 'low';
+        }
+        
+        // Calculate board density and symbol distribution
+        const filledPositions = board.filter(s => s >= 0 && s <= 10).length;
+        const boardDensity = filledPositions / board.length;
+        
+        // Analyze symbol distribution across reels (6 reels × 5 symbols)
+        const symbolDistribution: { [reel: number]: number[] } = {};
+        const reelWidth = 5;
+        for (let reel = 0; reel < 6; reel++) {
+            symbolDistribution[reel] = [];
+            for (let pos = 0; pos < reelWidth; pos++) {
+                const boardIndex = reel * reelWidth + pos;
+                if (boardIndex < board.length) {
+                    symbolDistribution[reel].push(board[boardIndex]);
+                }
+            }
         }
         
         return {
@@ -568,7 +606,9 @@ export class ResultChainOrchestrator {
             winningSymbols,
             nearWinSymbols,
             emptyPositions,
-            winPotential
+            winPotential,
+            boardDensity,
+            symbolDistribution
         };
     }
 
