@@ -223,7 +223,7 @@ async function main() {
                                 betLevel: config.betLevel,
                                 coinValue: config.coinValue
                             },
-                            // Filter out deprecated fields from boards
+                            // Filter out deprecated fields from boards and include new multiplier fields
                             boards: chainResult.boards.map(board => ({
                                 board: board.board,
                                 multipliers: board.multipliers,
@@ -234,7 +234,12 @@ async function main() {
                                 freeSpinWins: board.freeSpinWins,
                                 freeSpinBoards: board.freeSpinBoards,
                                 settlementResult: board.settlementResult,
-                                totalTumbleWin: board.totalTumbleWin || 0
+                                totalTumbleWin: board.totalTumbleWin || 0,        // Raw tumble wins (base + free spins)
+                                boardMultiplierSum: board.boardMultiplierSum || 0, // Sum of board multipliers
+                                totalWin: board.totalWin || board.totalTumbleWin || 0, // Final win with multipliers applied
+                                // Additional fields for debugging multiplier effects
+                                multiplierApplied: (board.boardMultiplierSum || 0) > 0,
+                                winMultiplier: (board.boardMultiplierSum || 0) > 0 ? (board.boardMultiplierSum || 0) : 1,
                             })),
                             tumbleStats: chainResult.tumbleStats,
                             patternInfo: AVAILABLE_PATTERNS[pattern as keyof typeof AVAILABLE_PATTERNS]
@@ -551,7 +556,8 @@ async function generateChain(patternType: string, boardCount: number, config: Ge
         };
 
         chainResult.boards.forEach(board => {
-            const boardWin = board.totalTumbleWin || 0;
+            // Use new totalWin field that includes board multipliers, fallback to totalTumbleWin
+            const boardWin = board.totalWin || board.totalTumbleWin || 0;
             totalWon += boardWin;
             
             if (boardWin === 0) {

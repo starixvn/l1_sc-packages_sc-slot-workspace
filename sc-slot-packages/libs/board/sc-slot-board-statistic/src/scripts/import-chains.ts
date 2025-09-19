@@ -342,11 +342,19 @@ async function importSingleFile(
             }
         };
 
+        // Use the pre-calculated totalWagered from betData - this is already calculated in generate-chains
+        const totalWagered = metadata.betData?.totalBetAmount;
+        
+        if (!totalWagered || isNaN(totalWagered)) {
+            throw new Error(`Invalid totalWagered value: ${totalWagered} for chain ${metadata.name}`);
+        }
+
         // Prepare statistics input for statistics collection
         const statsInput: CreateResultChainStatisticsInput = {
             resultChainName: metadata.name,
             patternType: metadata.patternType,
             resultChain: resultChainInterface as any,
+            totalWagered: totalWagered,
             createdBy: metadata.createdBy || 'import-script',
             status: 'active'
         };

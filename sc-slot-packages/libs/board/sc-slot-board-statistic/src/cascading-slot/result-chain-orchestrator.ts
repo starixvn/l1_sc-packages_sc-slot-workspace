@@ -170,7 +170,7 @@ export class ResultChainOrchestrator {
                 duration,
                 finalRTP: finalRtpResult.actualRTP,
                 averageWin: finalRtpResult.totalWins / config.boardCount,
-                maxWin: Math.max(...bestChain.map(board => board.totalTumbleWin || 0)),
+                maxWin: Math.max(...bestChain.map(board => board.totalWin || board.totalTumbleWin || 0)),
                 hitFrequency: finalRtpResult.hitFrequency,
             },
             tumbleStats,
@@ -195,7 +195,7 @@ export class ResultChainOrchestrator {
             if (i % 20 === 19) {
                 // Adjust every 20 boards
                 const currentRTP = boards.length > 0 
-                    ? boards.reduce((sum, board) => sum + (board.totalTumbleWin || 0), 0) / (boards.length * totalBetAmount) 
+                    ? boards.reduce((sum, board) => sum + (board.totalWin || board.totalTumbleWin || 0), 0) / (boards.length * totalBetAmount) 
                     : 0;
                 
                 console.log(`📈 Progress: ${i + 1}/${config.boardCount} boards, current RTP: ${(currentRTP * 100).toFixed(2)}%`);
@@ -254,7 +254,7 @@ export class ResultChainOrchestrator {
                 // Process settlement using external calculator
                 const boardResult = await this.processSettlement(initialBoard, round, betSize);
                 
-                const distance = Math.abs((boardResult.totalTumbleWin || 0) - targetWin);
+                const distance = Math.abs((boardResult.totalWin || boardResult.totalTumbleWin || 0) - targetWin);
 
                 if (distance < bestDistance || bestBoard === null) {
                     bestBoard = boardResult;
@@ -339,6 +339,11 @@ export class ResultChainOrchestrator {
             console.log(`✅ Free spins completed: ${totalFreeSpinsPlayed} spins played, ${freeSpinWins} total wins`);
         }
         
+        // Calculate board multiplier sum and final win with multipliers
+        const boardMultiplierSum = (initialBoard.multipliers || []).reduce((sum, mult) => sum + mult, 0);
+        const rawTumbleWin = totalWin + freeSpinWins; // Raw wins before multipliers
+        const finalTotalWin = boardMultiplierSum > 0 ? rawTumbleWin * boardMultiplierSum : rawTumbleWin;
+        
         const boardResult = {
             board: initialBoard.newBoard,
             multipliers: initialBoard.multipliers,
@@ -356,7 +361,9 @@ export class ResultChainOrchestrator {
                 freeSpins: { count: scatterCount, odds: freeSpinsAwarded },
                 additionalFreeSpins: { count: 0, odds: 0 }
             },
-            totalTumbleWin: totalWin + freeSpinWins, // Include free spin wins in total
+            totalTumbleWin: rawTumbleWin,           // Raw tumble wins (base game + free spins)
+            boardMultiplierSum: boardMultiplierSum, // Sum of board multipliers
+            totalWin: finalTotalWin,                // Final win with board multipliers applied
             // Include bet data for stake flexibility
             betLevel: round.betLevel,
             coinValue: round.coinValue,
@@ -1183,7 +1190,12 @@ export class ResultChainOrchestrator {
                 multipliers: board.multipliers,
                 // ❌ Remove deprecated fields: cascadeCount, totalCascadeWin
                 settlementResult: board.settlementResult,
-                totalTumbleWin: board.totalTumbleWin || 0, // ✅ Only include totalTumbleWin
+                totalTumbleWin: board.totalTumbleWin || 0,        // Raw tumble wins (base + free spins)
+                boardMultiplierSum: board.boardMultiplierSum || 0, // Sum of board multipliers
+                totalWin: board.totalWin || board.totalTumbleWin || 0, // Final win with multipliers applied
+                // Additional fields for debugging multiplier effects
+                multiplierApplied: (board.boardMultiplierSum || 0) > 0,
+                winMultiplier: (board.boardMultiplierSum || 0) > 0 ? (board.boardMultiplierSum || 0) : 1,
             })),
         };
 

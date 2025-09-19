@@ -6,6 +6,7 @@ export interface CreateResultChainStatisticsInput {
     resultChainName: string;
     patternType: string;
     resultChain: ResultChainInterface;
+    totalWagered?: number;
     createdBy?: string;
     status?: 'active' | 'archived' | 'testing';
 }
@@ -35,6 +36,9 @@ export class ResultChainStatisticsRepository {
         } = input;
 
         try {
+            // Calculate multiplier statistics
+            const multiplierStats = this.calculateMultiplierStats(resultChain.boards);
+            
             const statsDoc = new ResultChainStatistics({
                 resultChainName,
                 patternType,
@@ -42,8 +46,8 @@ export class ResultChainStatisticsRepository {
                 targetRTP: resultChain.config.targetRTP,
                 actualRTP: resultChain.rtpResult.actualRTP,
                 rtpVariance: Math.abs(resultChain.rtpResult.actualRTP - resultChain.config.targetRTP),
-                totalWagered: resultChain.config.betSize * resultChain.config.boardCount,
-                totalWon: resultChain.boards.reduce((sum, board) => sum + (board.totalTumbleWin || 0), 0),
+                totalWagered: input.totalWagered || 0,
+                totalWon: resultChain.boards.reduce((sum, board) => sum + (board.totalWin || board.totalTumbleWin || 0), 0),
                 generationAttempts: (resultChain as any).generationAttempts || 1,
                 generationDuration: (resultChain as any).generationDuration || 0,
                 configJson: resultChain.config,
@@ -52,7 +56,13 @@ export class ResultChainStatisticsRepository {
                 betLevel: (resultChain as any).metadata?.betData?.betLevel || 0.5,
                 coinValue: (resultChain as any).metadata?.betData?.coinValue || 0.1,
                 status,
-                createdBy
+                createdBy,
+                // Add multiplier statistics
+                totalWonWithMultipliers: multiplierStats.totalWonWithMultipliers,
+                totalWonWithoutMultipliers: multiplierStats.totalWonWithoutMultipliers,
+                multiplierHitCount: multiplierStats.multiplierHitCount,
+                averageMultiplier: multiplierStats.averageMultiplier,
+                maxMultiplier: multiplierStats.maxMultiplier
             });
 
             const savedStats = await statsDoc.save();
@@ -292,5 +302,47 @@ export class ResultChainStatisticsRepository {
             console.error('❌ Failed to count statistics by status:', error);
             throw error;
         }
+    }
+
+    /**
+     * Calculate multiplier statistics from board data
+     */
+    private calculateMultiplierStats(boards: any[]): {
+        totalWonWithMultipliers: number;
+        totalWonWithoutMultipliers: number;
+        multiplierHitCount: number;
+        averageMultiplier: number;
+        maxMultiplier: number;
+    } {
+        let totalWonWithMultipliers = 0;
+        let totalWonWithoutMultipliers = 0;
+        let multiplierHitCount = 0;
+        let totalMultiplierSum = 0;
+        let maxMultiplier = 0;
+
+        boards.forEach(board => {
+            const totalWin = board.totalWin || board.totalTumbleWin || 0;
+            const totalTumbleWin = board.totalTumbleWin || 0;
+            const boardMultiplierSum = board.boardMultiplierSum || 0;
+
+            totalWonWithMultipliers += totalWin;
+            totalWonWithoutMultipliers += totalTumbleWin;
+
+            if (boardMultiplierSum > 0) {
+                multiplierHitCount++;
+                totalMultiplierSum += boardMultiplierSum;
+                maxMultiplier = Math.max(maxMultiplier, boardMultiplierSum);
+            }
+        });
+
+        const averageMultiplier = multiplierHitCount > 0 ? totalMultiplierSum / multiplierHitCount : 0;
+
+        return {
+            totalWonWithMultipliers,
+            totalWonWithoutMultipliers,
+            multiplierHitCount,
+            averageMultiplier,
+            maxMultiplier
+        };
     }
 }

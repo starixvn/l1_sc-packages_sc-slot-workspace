@@ -19,6 +19,12 @@ export interface IResultChainStatistics extends Document {
     createdBy?: string;
     betLevel: number;
     coinValue: number;
+    // Multiplier statistics for analysis
+    totalWonWithMultipliers?: number;     // Total wins including multiplier effects
+    totalWonWithoutMultipliers?: number;  // Total wins before multiplier effects
+    multiplierHitCount?: number;          // Number of boards with multipliers > 0
+    averageMultiplier?: number;           // Average multiplier value when multipliers are present
+    maxMultiplier?: number;               // Maximum multiplier value in chain
     createdAt: Date;
     
     // Instance methods
@@ -55,7 +61,7 @@ const ResultChainStatisticsSchema = new Schema<IResultChainStatistics>({
     boardCount: {
         type: Number,
         required: true,
-        min: 100,
+        min: 1,  // Allow test chains with fewer boards
         max: 150,
         index: true
     },
@@ -136,6 +142,31 @@ const ResultChainStatisticsSchema = new Schema<IResultChainStatistics>({
         min: 0.01,
         max: 1.0,
         default: 0.1,
+        index: true
+    },
+    // Multiplier statistics for analysis
+    totalWonWithMultipliers: {
+        type: Number,
+        min: 0,
+        index: true
+    },
+    totalWonWithoutMultipliers: {
+        type: Number,
+        min: 0,
+        index: true
+    },
+    multiplierHitCount: {
+        type: Number,
+        min: 0,
+        index: true
+    },
+    averageMultiplier: {
+        type: Number,
+        min: 0
+    },
+    maxMultiplier: {
+        type: Number,
+        min: 0,
         index: true
     }
 }, {

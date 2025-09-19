@@ -59,7 +59,9 @@ export interface BoardResult {
         freeSpins: { count: number; odds: number };
         additionalFreeSpins: { count: number; odds: number };
     };
-    totalTumbleWin?: number;
+    totalTumbleWin?: number;        // Raw tumble wins (base game + free spins)
+    boardMultiplierSum?: number;    // Sum of board multipliers [3, 5] → 8
+    totalWin?: number;              // totalTumbleWin * boardMultiplierSum (final win with multipliers)
     // Bet data for chain analysis
     betLevel?: number;
     coinValue?: number;
@@ -106,10 +108,12 @@ export class RTPController {
      */
     validateRTP(boardResults: BoardResult[]): RTPResult {
         const totalBets = boardResults.length * this.config.betSize;
-        const totalWins = sum(map((result) => result.totalTumbleWin || 0, boardResults));
+        // Use new totalWin field that includes board multipliers, fallback to totalTumbleWin for backward compatibility
+        const totalWins = sum(map((result) => result.totalWin || result.totalTumbleWin || 0, boardResults));
         const actualRTP = totalWins / totalBets;
 
-        const winningBoards = filter((result) => (result.totalTumbleWin || 0) > 0, boardResults);
+        // Use totalWin for hit frequency calculation as well
+        const winningBoards = filter((result) => (result.totalWin || result.totalTumbleWin || 0) > 0, boardResults);
         const hitFrequency = winningBoards.length / boardResults.length;
 
         const variance = this.calculateVariance(boardResults);
@@ -129,7 +133,8 @@ export class RTPController {
      * Calculate variance of wins for volatility measurement
      */
     private calculateVariance(boardResults: BoardResult[]): number {
-        const wins = map((result) => result.totalTumbleWin || 0, boardResults);
+        // Use new totalWin field for variance calculation
+        const wins = map((result) => result.totalWin || result.totalTumbleWin || 0, boardResults);
         const meanWin = mean(wins);
         const squaredDiffs = map((win) => Math.pow(win - meanWin, 2), wins);
         return mean(squaredDiffs);
@@ -177,7 +182,8 @@ export class RTPController {
         if (currentResults.length === 0) return 0;
 
         const totalBets = currentResults.length * this.config.betSize;
-        const totalWins = sum(map((result) => result.totalTumbleWin || 0, currentResults));
+        // Use new totalWin field for current RTP calculation
+        const totalWins = sum(map((result) => result.totalWin || result.totalTumbleWin || 0, currentResults));
 
         return totalWins / totalBets;
     }
