@@ -228,9 +228,12 @@ export class ResultChainOrchestrator {
             }
             let initialBoard = boardGenerator.generate();
             
+            // ✅ TRUST BOARDGENERATOR: Use its multipliers directly - they are generated based on the board
+            
             // 🎯 FIX FOR EMPTY TUMBLES: If target win > 0, ensure board has winning symbols
             if (targetWin > 0) {
                 initialBoard = await this.enhanceBoardForTargetWin(initialBoard, targetWin, betSize);
+                // ✅ Board enhancement handles multipliers internally
             }
             
             // Create round for settlement processing using config bet parameters
@@ -418,37 +421,20 @@ export class ResultChainOrchestrator {
                 break; // No more wins, stop tumbling
             }
             
-            // 🎯 NEW: Detect Symbol 10s on current board BEFORE cascade (pure function)
-            const symbol10Count = ResultChainOrchestrator.countSymbol10s(currentBoard);
-            const newSymbol10Values = ResultChainOrchestrator.generateMultiplierValues(symbol10Count);
-            
-            // 🔍 VERIFICATION: Log multiplier accumulation for debugging
-            if (symbol10Count > 0 || accumulatedMultiplierValues.length > 0) {
-                console.log(`🎯 Tumble ${tumbleIndex + 1}: Symbol 10s found: ${symbol10Count}, New values: [${newSymbol10Values.join(', ')}]`);
-                console.log(`   Before accumulation: [${accumulatedMultiplierValues.join(', ')}]`);
-            }
-            
-            // Use production BoardGenerator.explodeAndRefill (unchanged)
+            // Use production BoardGenerator.explodeAndRefill with correct multipliers
             const tumbleResult = boardGenerator.explodeAndRefill(
                 currentBoard, 
                 winSymbols, 
                 currentMultipliers
             );
             
-            // ✅ USE BOARDGENERATOR OUTPUT DIRECTLY - Already in correct format
-            // explodedSymbols[i] = -1 (NO_SYMBOL) for not exploded, winning symbol value for exploded
+            // ✅ TRUST BOARDGENERATOR: Use its multipliers directly - they are already correct
+            // The BoardGenerator handles multiplier arrangement internally based on board state
+            accumulatedMultiplierValues = [...tumbleResult.multipliers];
             
-            // 🎯 NEW: Accumulate multiplier values properly following guide requirements (pure function)
-            const previousAccumulated = [...accumulatedMultiplierValues];
-            accumulatedMultiplierValues = ResultChainOrchestrator.accumulateMultiplierValues(
-                accumulatedMultiplierValues,
-                newSymbol10Values,
-                tumbleIndex === 0 // First tumble includes initial multipliers
-            );
-            
-            // 🔍 VERIFICATION: Log accumulation result
-            if (symbol10Count > 0 || previousAccumulated.length > 0) {
-                console.log(`   After accumulation: [${accumulatedMultiplierValues.join(', ')}] (Sum: ${ResultChainOrchestrator.calculateMultiplierSum(accumulatedMultiplierValues)})`);
+            // 🔍 VERIFICATION: Log multiplier state for debugging
+            if (tumbleResult.multipliers.length > 0) {
+                console.log(`🎯 Tumble ${tumbleIndex + 1}: BoardGenerator multipliers: [${tumbleResult.multipliers.join(', ')}] (Sum: ${ResultChainOrchestrator.calculateMultiplierSum(tumbleResult.multipliers)})`);
             }
             
             // Calculate win for this tumble using correct payout rules with actual symbol counts
@@ -495,36 +481,43 @@ export class ResultChainOrchestrator {
      */
     private async enhanceBoardForTargetWin(board: { newBoard: number[]; multipliers: number[] }, targetWin: number, totalBetAmount: number): Promise<{ newBoard: number[]; multipliers: number[] }> {
         const enhancementStart = Date.now();
-        const maxEnhancementTime = 10000; // 10 second timeout (increased from 5s)
+        const maxEnhancementTime = 10000;
         
-        // Only log enhancement details for meaningful wins (2x+ multiplier) to reduce noise
+        const projectedMultipliers = ResultChainOrchestrator.projectFinalMultipliers(
+            board.newBoard,
+            board.multipliers
+        );
+        
+        const adjustedTargetWin = ResultChainOrchestrator.calculateAdjustedTargetWin(
+            targetWin,
+            projectedMultipliers
+        );
+        
         const targetMultiplier = targetWin / totalBetAmount;
-        const isSignificantWin = targetWin > totalBetAmount * 2; // 2x+ multiplier
+        const adjustedMultiplier = adjustedTargetWin / totalBetAmount;
+        const multiplierSum = ResultChainOrchestrator.calculateMultiplierSum(projectedMultipliers);
+        const isSignificantWin = targetWin > totalBetAmount * 2;
         
         if (isSignificantWin) {
-            console.log(`🎯 Enhancing board for target win: ${targetWin.toFixed(2)} (${targetMultiplier.toFixed(1)}x total bet)`);
+            console.log(`🎯 Enhancing board: target ${targetWin.toFixed(2)} (${targetMultiplier.toFixed(1)}x), adjusted ${adjustedTargetWin.toFixed(2)} (${adjustedMultiplier.toFixed(1)}x), multipliers sum: ${multiplierSum}`);
         }
         
         try {
-            // Use the new enhanced board processing system
             const enhancementRequest = {
                 board: [...board.newBoard],
-                multipliers: [...board.multipliers],
-                targetWin,
+                multipliers: [...projectedMultipliers],
+                targetWin: adjustedTargetWin,
                 totalBetAmount,
                 maxEnhancementTime
             };
             
             const result = await this.enhancementOrchestrator.enhanceBoard(enhancementRequest);
             
-            // Log results for significant wins
             if (isSignificantWin) {
-                console.log(`   ✅ Enhancement completed: ${result.strategy} (${result.actualMultiplier.toFixed(1)}x achieved)`);
-                if (result.symbolsPlaced.length > 0) {
-                    result.symbolsPlaced.forEach(placement => {
-                        console.log(`   🔧 ${placement.reason}`);
-                    });
-                }
+                console.log(`   ✅ Enhancement: ${result.strategy} (${result.actualMultiplier.toFixed(1)}x achieved)`);
+                result.symbolsPlaced.forEach(placement => {
+                    console.log(`   🔧 ${placement.reason}`);
+                });
             }
             
             return {
@@ -534,10 +527,8 @@ export class ResultChainOrchestrator {
             
         } catch (error) {
             const duration = Date.now() - enhancementStart;
-            console.warn(`⚠️  Enhanced board processing failed after ${duration}ms: ${error.message}`);
-            console.warn(`   Falling back to original board`);
+            console.warn(`⚠️  Enhancement failed after ${duration}ms: ${error.message}`);
             
-            // Fallback to original board
             return {
                 newBoard: [...board.newBoard],
                 multipliers: [...board.multipliers]
@@ -1243,6 +1234,39 @@ export class ResultChainOrchestrator {
      */
     private static calculateMultiplierSum(multiplierValues: readonly number[]): number {
         return multiplierValues.reduce((sum, value) => sum + value, 0);
+    }
+
+    /**
+     * Pure function: Project final multiplier values after tumble processing
+     * @param board - Current board state
+     * @param currentMultipliers - Current accumulated multiplier values
+     * @returns Projected multiplier values after processing Symbol 10s
+     */
+    private static projectFinalMultipliers(
+        board: readonly number[],
+        currentMultipliers: readonly number[]
+    ): number[] {
+        const symbol10Count = ResultChainOrchestrator.countSymbol10s(board);
+        const newSymbol10Values = ResultChainOrchestrator.generateMultiplierValues(symbol10Count);
+        return ResultChainOrchestrator.accumulateMultiplierValues(
+            currentMultipliers,
+            newSymbol10Values,
+            false
+        );
+    }
+
+    /**
+     * Pure function: Calculate adjusted target win based on projected multipliers
+     * @param targetWin - Original target win amount
+     * @param projectedMultipliers - Projected multiplier values
+     * @returns Adjusted target win for raw tumble wins
+     */
+    private static calculateAdjustedTargetWin(
+        targetWin: number,
+        projectedMultipliers: readonly number[]
+    ): number {
+        const multiplierSum = ResultChainOrchestrator.calculateMultiplierSum(projectedMultipliers);
+        return multiplierSum > 0 ? targetWin / multiplierSum : targetWin;
     }
 
     /**

@@ -20,7 +20,8 @@ export const BET_LEVELS = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
  * Available coin values (in currency units)
  * Range: 0.01-2.00 for typical casino denominations
  */
-export const COIN_VALUES = [0.01, 0.05, 0.1, 0.5, 1, 2];
+// export const COIN_VALUES = [0.01, 0.05, 0.1, 0.5, 1, 2];
+export const COIN_VALUES = [1];
 
 /**
  * Generate all possible bet configurations from the arrays above

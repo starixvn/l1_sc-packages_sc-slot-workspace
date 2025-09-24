@@ -13,7 +13,7 @@ export interface EnhancementRequest {
 export interface EnhancementResult {
     enhancedBoard: number[];
     enhancedMultipliers: number[];
-    strategy: 'single-symbol' | 'multi-symbol' | 'multiplier-boost' | 'no-enhancement';
+    strategy: 'single-symbol' | 'multi-symbol' | 'multiplier-boost' | 'multiplier-generation' | 'no-enhancement';
     symbolsPlaced: Array<{
         symbol: number;
         positions: number[];
@@ -101,6 +101,15 @@ export class BoardEnhancementOrchestrator {
 
             case 'multiplier-boost':
                 enhancementResult = await this.applyMultiplierBoostStrategy(
+                    request, 
+                    boardAnalysis, 
+                    symbolPriority, 
+                    startTime
+                );
+                break;
+
+            case 'multiplier-generation':
+                enhancementResult = await this.applyMultiplierGenerationStrategy(
                     request, 
                     boardAnalysis, 
                     symbolPriority, 
@@ -330,6 +339,79 @@ export class BoardEnhancementOrchestrator {
     }
 
     /**
+     * Apply multiplier generation strategy (place Symbol 10s for high multiplier targets)
+     */
+    private async applyMultiplierGenerationStrategy(
+        request: EnhancementRequest,
+        boardAnalysis: EnhancedBoardAnalysis,
+        symbolPriority: SymbolPriorityResult,
+        startTime: number
+    ): Promise<EnhancementResult> {
+        const targetMultiplier = request.targetWin / request.totalBetAmount;
+        const currentMultiplierSum = request.multipliers.reduce((sum, mult) => sum + mult, 0);
+        
+        const neededMultiplierSum = Math.ceil(targetMultiplier * 20);
+        const additionalMultiplierNeeded = Math.max(0, neededMultiplierSum - currentMultiplierSum);
+        
+        if (additionalMultiplierNeeded <= 0) {
+            return this.createNoEnhancementResult(
+                request, 
+                boardAnalysis, 
+                startTime, 
+                'Current multipliers sufficient for target'
+            );
+        }
+        
+        const symbol10sToPlace = Math.min(
+            Math.ceil(additionalMultiplierNeeded / 15),
+            boardAnalysis.emptyPositions.length
+        );
+        
+        if (symbol10sToPlace === 0) {
+            return this.createNoEnhancementResult(
+                request, 
+                boardAnalysis, 
+                startTime, 
+                'No empty positions for Symbol 10 placement'
+            );
+        }
+        
+        const positions = this.selectOptimalPositions(boardAnalysis, 10, symbol10sToPlace);
+        const enhancedBoard = [...request.board];
+        
+        positions.forEach(pos => {
+            enhancedBoard[pos] = 10;
+        });
+        
+        const newMultiplierValues = Array(symbol10sToPlace).fill(0).map(() => 
+            Math.floor(Math.random() * 24) + 2
+        );
+        const enhancedMultipliers = [...request.multipliers, ...newMultiplierValues];
+        const newMultiplierSum = enhancedMultipliers.reduce((sum, mult) => sum + mult, 0);
+        
+        const actualMultiplier = (request.targetWin / request.totalBetAmount) * (newMultiplierSum / targetMultiplier);
+        const targetAchieved = newMultiplierSum >= neededMultiplierSum * 0.8;
+        
+        return {
+            enhancedBoard,
+            enhancedMultipliers,
+            strategy: 'multiplier-generation',
+            symbolsPlaced: [{
+                symbol: 10,
+                positions,
+                reason: `Generated ${symbol10sToPlace} Symbol 10s for ${newMultiplierSum}x total multiplier`
+            }],
+            targetAchieved,
+            actualMultiplier,
+            enhancementTime: Date.now() - startTime,
+            analysis: {
+                boardAnalysis,
+                symbolPriority
+            }
+        };
+    }
+
+    /**
      * Select optimal positions for symbol placement
      */
     private selectOptimalPositions(
@@ -497,3 +579,4 @@ export class BoardEnhancementOrchestrator {
         return analysis;
     }
 }
+

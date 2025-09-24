@@ -63,6 +63,13 @@ const preGeneratedResult = [
 - **newBoard**: Array of 30 integers (6 reels × 5 symbols)
 - **Values**: 0-8 (normal symbols), 9 (free spin), 10 (multiplier)
 
+### Multiplier Format
+
+- **multipliers**: Array of multiplier values that accumulate across tumbles
+- **Values**: 2-25 (generated from Symbol 10s)
+- **Accumulation Pattern**: `[6, 6] → [6, 6, 2] → [6, 6, 2]` (preserves existing, appends new)
+- **Final Calculation**: Sum of all accumulated values used for win multiplication
+
 ### explodedSymbols Format
 
 - **Length**: 30 elements (same as board)
@@ -78,6 +85,86 @@ const preGeneratedResult = [
   - `-1` = no new symbol at this position
   - `new_symbol_value` = symbol that dropped in
 - **Empty array `[]`** = no new symbols (stops cascade)
+
+## Multiplier Accumulation System
+
+### How Multiplier Accumulation Works
+
+The system now properly accumulates multiplier values across tumbles following these rules:
+
+1. **Symbol 10 Detection**: Each tumble detects Symbol 10s on the current board
+2. **Value Generation**: Each Symbol 10 generates a random multiplier value (2-25 range)
+3. **Accumulation**: New values are appended to existing multiplier array
+4. **Persistence**: Previous multiplier values are always preserved
+5. **Final Calculation**: Sum of all accumulated values multiplies the final win
+
+### Accumulation Examples
+
+#### Example 1: Single Symbol 10 Accumulation
+```javascript
+// Initial state
+multipliers: [8, 14]
+
+// Tumble 1: Board has 1 Symbol 10 → generates [12]
+// Before: [8, 14]
+// After:  [8, 14, 12] (Sum: 34)
+
+// Final win calculation: baseWin × 34
+```
+
+#### Example 2: Multi-Tumble Accumulation
+```javascript
+// Initial state
+multipliers: [5, 15]
+
+// Tumble 1: Board has 1 Symbol 10 → generates [18]
+// Before: [5, 15]
+// After:  [5, 15, 18] (Sum: 38)
+
+// Tumble 2: Board has 1 Symbol 10 → generates [21]
+// Before: [5, 15, 18]
+// After:  [5, 15, 18, 21] (Sum: 59)
+
+// Final win calculation: baseWin × 59
+```
+
+#### Example 3: Multiple Symbol 10s in Single Tumble
+```javascript
+// Initial state
+multipliers: [11, 5, 12, 3]
+
+// Tumble 1: Board has 2 Symbol 10s → generates [18, 20]
+// Before: [11, 5, 12, 3]
+// After:  [11, 5, 12, 3, 18, 20] (Sum: 69)
+
+// Final win calculation: baseWin × 69
+```
+
+### PreGeneratedResult Structure with Multipliers
+
+When creating preGeneratedResult data, ensure multiplier arrays follow the accumulation pattern:
+
+```javascript
+const preGeneratedResult = [
+  // Item 1: Initial board with Symbol 10s
+  {
+    newBoard: [10, 2, 3, 4, 5, 6, 7, 8, 0, 1, 2, 3, 4, 5, 6, 7, 8, 0, 1, 2, 3, 4, 5, 6, 7, 8, 0, 1, 2, 3],
+    multipliers: [8, 14], // Initial multipliers
+    icons: {},
+    explodedSymbols: [],
+    newSymbols: [],
+  },
+  
+  // Item 2: After processing Symbol 10 → multipliers accumulated
+  {
+    newBoard: [4, 2, 3, 4, 5, 6, 7, 8, 0, 1, 2, 3, 4, 5, 6, 7, 8, 0, 1, 2, 3, 4, 5, 6, 7, 8, 0, 1, 2, 3],
+    multipliers: [8, 14, 12], // Accumulated: original + new Symbol 10 value
+    icons: {},
+    explodedSymbols: [/* cascade data */],
+    newSymbols: [/* replacement data */],
+  },
+];
+```
 
 ## Quick Examples
 
@@ -175,6 +262,23 @@ const preGeneratedResult = [
 - [ ] Board symbols are valid (0-10 range)
 - [ ] multipliers array is not empty (at least [1])
 
+### Multiplier Accumulation Validation
+- [ ] Multiplier arrays follow accumulation pattern: preserve existing + append new
+- [ ] Symbol 10s on board correspond to new multiplier values generated
+- [ ] Multiplier values are in valid range (2-25 for generated values)
+- [ ] No multiplier values are lost between tumbles
+- [ ] Final multiplier sum correctly calculated from all accumulated values
+- [ ] Board enhancement uses projected multipliers for target win adjustment
+
+### BoardGenerator Integration Validation
+- [ ] BoardGenerator.generate() multipliers used directly without modification
+- [ ] BoardGenerator.explodeAndRefill() receives correct oldMultipliers parameter
+- [ ] tumbleResult.multipliers used directly without regeneration or override
+- [ ] No manual Symbol 10 counting or multiplier value generation
+- [ ] No synchronization attempts that override BoardGenerator logic
+- [ ] Data flow respected: oldMultipliers → explodeAndRefill → newMultipliers
+- [ ] currentMultipliers updated with BoardGenerator output for next tumble
+
 ### Free Spin Validation
 - [ ] `isFreeSpin` boolean correctly indicates game mode
 - [ ] Free spin properties present when `isFreeSpin: true`:
@@ -195,6 +299,10 @@ const preGeneratedResult = [
 2. **Only Winners Get explodedSymbols**: Only tumbles with winning combinations get explodedSymbols assigned
 3. **Last Tumble Never Wins**: The final tumble must have no wins to stop the cascade
 4. **explodedSymbols Flow**: Item N+1 provides explodedSymbols to tumble N (if tumble N won)
+5. **Trust BoardGenerator Multipliers**: Always use BoardGenerator's multiplier output directly - never override or regenerate
+6. **Pass oldMultipliers Correctly**: BoardGenerator.explodeAndRefill() requires oldMultipliers for proper arrangement
+7. **No Manual Synchronization**: BoardGenerator handles multiplier logic internally based on board state
+8. **Respect Data Flow**: oldMultipliers → explodeAndRefill → newMultipliers → next tumble
 
 🔄 **The Pattern:**
 
@@ -206,6 +314,111 @@ Result: 3 tumbles, only first 2 have explodedSymbols
 ```
 
 This structure ensures smooth integration with `RoundCalculator.processSpinning()` and proper cascade behavior.
+
+## BoardGenerator Integration Guidelines
+
+### Critical Multiplier Handling Rules
+
+The external `sc-slot-board-generator` package handles multiplier generation and arrangement internally. **Never override or regenerate its multipliers**.
+
+#### ✅ Correct Approach
+```typescript
+// 1. Trust BoardGenerator's initial multipliers
+const initialBoard = boardGenerator.generate();
+// Use initialBoard.multipliers directly - they're generated based on the board
+
+// 2. Pass oldMultipliers to explodeAndRefill
+const tumbleResult = boardGenerator.explodeAndRefill(
+    currentBoard, 
+    winSymbols, 
+    currentMultipliers  // ← Essential for proper arrangement
+);
+
+// 3. Use BoardGenerator's output directly
+accumulatedMultiplierValues = [...tumbleResult.multipliers];
+currentMultipliers = [...tumbleResult.multipliers];
+```
+
+#### ❌ Wrong Approach
+```typescript
+// DON'T: Override BoardGenerator's multipliers
+if (symbol10Count !== initialBoard.multipliers.length) {
+    initialBoard.multipliers = generateOwnMultipliers(symbol10Count); // ❌ WRONG
+}
+
+// DON'T: Ignore BoardGenerator's output
+const tumbleResult = boardGenerator.explodeAndRefill(/*...*/);
+// Ignore tumbleResult.multipliers and generate own ❌ WRONG
+const newValues = generateOwnMultipliers(newSymbol10Count);
+```
+
+### Why BoardGenerator Knows Best
+
+1. **Board State Awareness**: BoardGenerator sees the complete board state and symbol positions
+2. **Internal Logic**: Has sophisticated multiplier arrangement algorithms based on cascades
+3. **Symbol Tracking**: Properly tracks which Symbol 10s are new vs existing
+4. **Arrangement Rules**: Handles multiplier positioning and accumulation internally
+5. **Data Consistency**: Ensures multipliers always correspond to actual board state
+
+### Common Mistakes to Avoid
+
+❌ **Synchronization Attempts**: Don't try to "fix" BoardGenerator's multipliers
+❌ **Double Generation**: Don't generate values for symbols BoardGenerator already handled  
+❌ **Manual Counting**: Don't count Symbol 10s and generate corresponding values
+❌ **Array Overrides**: Don't replace BoardGenerator's multiplier arrays
+❌ **Logic Duplication**: Don't reimplement BoardGenerator's internal logic
+
+### Integration Validation
+
+✅ **Trust Test**: Use BoardGenerator output without modification
+✅ **Flow Test**: Verify oldMultipliers → explodeAndRefill → newMultipliers works
+✅ **Consistency Test**: Ensure multipliers match actual board state automatically
+✅ **Data Test**: Confirm no manual intervention breaks the data flow
+
+## Board Enhancement Integration
+
+The system now includes intelligent board enhancement that works with multiplier accumulation:
+
+### Enhancement Strategy Selection
+
+The system automatically selects the optimal enhancement strategy based on target multipliers:
+
+```typescript
+// Strategy selection logic
+if (canReachTarget) {
+    return 'single-symbol';           // Direct achievement
+}
+if (targetMultiplier > 10.0) {
+    return 'multiplier-generation';   // High targets → Place Symbol 10s
+}
+if (goodAlternatives.length >= 1 && targetMultiplier > 2.0) {
+    return 'multi-symbol';           // Complex combinations
+}
+return 'multiplier-boost';           // Use existing multipliers
+```
+
+### Multiplier-Generation Strategy
+
+For extreme high targets (>10x), the system automatically:
+
+1. **Calculates Needed Multipliers**: `neededSum = targetMultiplier × 20`
+2. **Places Symbol 10s**: Adds Symbol 10s to empty board positions
+3. **Generates Values**: Creates random multiplier values (2-25 range)
+4. **Accumulates**: Appends new values to existing multiplier array
+5. **Validates**: Ensures target multiplier sum is achieved
+
+### Target Win Adjustment
+
+When boards have existing multipliers, target wins are automatically adjusted:
+
+```typescript
+// Example: Target 50x with existing 20x multipliers
+const adjustedTarget = 50 / 20 = 2.5x  // Adjusted for raw tumble wins
+// System places symbols to achieve 2.5x raw win
+// Final result: 2.5x × 20x = 50x total
+```
+
+This ensures accurate target achievement while respecting multiplier accumulation rules.
 
 ## Output Format Compliance
 

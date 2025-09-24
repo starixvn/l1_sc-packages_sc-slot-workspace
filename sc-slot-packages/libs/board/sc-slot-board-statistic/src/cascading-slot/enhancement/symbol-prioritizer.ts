@@ -20,7 +20,7 @@ export interface SymbolPriorityResult {
     primarySymbol: NearWinSymbol | null;
     alternativeSymbols: NearWinSymbol[];
     canReachTarget: boolean;
-    recommendedStrategy: 'single-symbol' | 'multi-symbol' | 'multiplier-boost';
+    recommendedStrategy: 'single-symbol' | 'multi-symbol' | 'multiplier-boost' | 'multiplier-generation';
 }
 
 /**
@@ -223,18 +223,20 @@ export class SymbolPrioritizer {
         alternativeSymbols: NearWinSymbol[],
         targetMultiplier: number,
         canReachTarget: boolean
-    ): 'single-symbol' | 'multi-symbol' | 'multiplier-boost' {
+    ): 'single-symbol' | 'multi-symbol' | 'multiplier-boost' | 'multiplier-generation' {
         if (canReachTarget) {
             return 'single-symbol';
         }
 
-        // If we have multiple good alternatives, consider multi-symbol
+        if (targetMultiplier > 10.0) {
+            return 'multiplier-generation';
+        }
+
         const goodAlternatives = alternativeSymbols.filter(s => s.priority > 0.5);
         if (goodAlternatives.length >= 1 && targetMultiplier > 2.0) {
             return 'multi-symbol';
         }
 
-        // For lower targets or when symbols are weak, use multiplier boost
         return 'multiplier-boost';
     }
 
