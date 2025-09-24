@@ -140,7 +140,7 @@ const ResultChainStatisticsSchema = new Schema<IResultChainStatistics>({
         type: Number,
         required: true,
         min: 0.01,
-        max: 1.0,
+        max: 10.0,  // Increased from 1.0 to 10.0 to allow higher coin values
         default: 0.1,
         index: true
     },

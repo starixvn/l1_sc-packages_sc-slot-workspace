@@ -307,6 +307,14 @@ async function importSingleFile(
         if (baseBetAmount <= 0) {
             throw new Error(`Invalid base bet amount: ${baseBetAmount}`);
         }
+        
+        // Validate bet parameters against database constraints
+        if (betLevel < 0.1 || betLevel > 10.0) {
+            throw new Error(`Invalid betLevel: ${betLevel} (must be between 0.1 and 10.0)`);
+        }
+        if (coinValue < 0.01 || coinValue > 10.0) {
+            throw new Error(`Invalid coinValue: ${coinValue} (must be between 0.01 and 10.0)`);
+        }
 
         // Prepare simplified chain input for main collection
         const chainInput: CreateResultChainInput = {
