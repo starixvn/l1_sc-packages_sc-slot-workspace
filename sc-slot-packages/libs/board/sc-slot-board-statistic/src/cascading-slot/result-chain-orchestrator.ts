@@ -303,9 +303,13 @@ export class ResultChainOrchestrator {
             baseBetAmount // baseBetAmount (for payout calculations)
         );
         
-        
         let tumbles = tumbleProcessingResult.tumbles;
         const totalWin = tumbleProcessingResult.totalWin;
+        
+        // 🎯 NEW: Extract accumulated multiplier values from final tumble
+        const finalTumbleMultipliers = tumbles.length > 0 
+            ? tumbles[tumbles.length - 1].multipliers || []
+            : initialBoard.multipliers || [];
         
         // 🎯 FIX: Follow guide patterns exactly - no extra "initial" tumbles
         if (tumbles.length === 0 || totalWin === 0) {
@@ -342,14 +346,14 @@ export class ResultChainOrchestrator {
             console.log(`✅ Free spins completed: ${totalFreeSpinsPlayed} spins played, ${freeSpinWins} total wins`);
         }
         
-        // Calculate board multiplier sum and final win with multipliers
-        const boardMultiplierSum = (initialBoard.multipliers || []).reduce((sum, mult) => sum + mult, 0);
+        // 🎯 UPDATED: Calculate board multiplier sum using accumulated values from tumbles (pure function)
+        const boardMultiplierSum = ResultChainOrchestrator.calculateMultiplierSum(finalTumbleMultipliers);
         const rawTumbleWin = totalWin + freeSpinWins; // Raw wins before multipliers
         const finalTotalWin = boardMultiplierSum > 0 ? rawTumbleWin * boardMultiplierSum : rawTumbleWin;
         
         const boardResult = {
             board: initialBoard.newBoard,
-            multipliers: initialBoard.multipliers,
+            multipliers: finalTumbleMultipliers, // 🎯 Use accumulated multiplier values from tumbles
             payoutResult: undefined,
             cascadeCount: tumbles.length,
             totalCascadeWin: totalWin,
@@ -385,6 +389,7 @@ export class ResultChainOrchestrator {
 
     /**
      * Process tumbles using BoardGenerator and convert to proper cascading slot format
+     * Following guide requirements for multiplier accumulation
      */
     private async processTumblesWithBoardGenerator(
         initialBoard: number[], 
@@ -396,6 +401,10 @@ export class ResultChainOrchestrator {
         const tumbles: any[] = [];
         let currentBoard = [...initialBoard];
         let currentMultipliers = [...initialMultipliers];
+        
+        // 🎯 NEW: Track accumulated multiplier VALUES (not board positions)
+        // Following guide pattern: [6, 6] → [6, 6, 2] → [6, 6, 2]
+        let accumulatedMultiplierValues = [...initialMultipliers];
         let totalWin = 0;
         
         // Maximum tumble iterations to prevent infinite loops
@@ -409,6 +418,15 @@ export class ResultChainOrchestrator {
                 break; // No more wins, stop tumbling
             }
             
+            // 🎯 NEW: Detect Symbol 10s on current board BEFORE cascade (pure function)
+            const symbol10Count = ResultChainOrchestrator.countSymbol10s(currentBoard);
+            const newSymbol10Values = ResultChainOrchestrator.generateMultiplierValues(symbol10Count);
+            
+            // 🔍 VERIFICATION: Log multiplier accumulation for debugging
+            if (symbol10Count > 0 || accumulatedMultiplierValues.length > 0) {
+                console.log(`🎯 Tumble ${tumbleIndex + 1}: Symbol 10s found: ${symbol10Count}, New values: [${newSymbol10Values.join(', ')}]`);
+                console.log(`   Before accumulation: [${accumulatedMultiplierValues.join(', ')}]`);
+            }
             
             // Use production BoardGenerator.explodeAndRefill (unchanged)
             const tumbleResult = boardGenerator.explodeAndRefill(
@@ -420,22 +438,33 @@ export class ResultChainOrchestrator {
             // ✅ USE BOARDGENERATOR OUTPUT DIRECTLY - Already in correct format
             // explodedSymbols[i] = -1 (NO_SYMBOL) for not exploded, winning symbol value for exploded
             
+            // 🎯 NEW: Accumulate multiplier values properly following guide requirements (pure function)
+            const previousAccumulated = [...accumulatedMultiplierValues];
+            accumulatedMultiplierValues = ResultChainOrchestrator.accumulateMultiplierValues(
+                accumulatedMultiplierValues,
+                newSymbol10Values,
+                tumbleIndex === 0 // First tumble includes initial multipliers
+            );
+            
+            // 🔍 VERIFICATION: Log accumulation result
+            if (symbol10Count > 0 || previousAccumulated.length > 0) {
+                console.log(`   After accumulation: [${accumulatedMultiplierValues.join(', ')}] (Sum: ${ResultChainOrchestrator.calculateMultiplierSum(accumulatedMultiplierValues)})`);
+            }
             
             // Calculate win for this tumble using correct payout rules with actual symbol counts
             const tumbleWin = this.calculateTumbleWin(winSymbols, baseBetAmount, currentBoard);
             totalWin += tumbleWin;
             
-            // Create tumble data with BoardGenerator format (CORRECT)
+            // Create tumble data with BoardGenerator format + accumulated multipliers
             const tumbleData = {
                 originalBoard: currentBoard.join(','),
                 newBoard: tumbleResult.newBoard.join(','),
                 explodedSymbols: tumbleResult.explodedSymbols,     // ✅ CORRECT: -1 for not exploded, symbol value for exploded
                 newSymbols: tumbleResult.newSymbols,               // ✅ Keep BoardGenerator cascading physics
-                multipliers: tumbleResult.multipliers || [],
+                multipliers: [...accumulatedMultiplierValues],     // 🎯 Use accumulated values following guide pattern
                 icons: this.createIconsData(winSymbols, tumbleWin, currentBoard, baseBetAmount),
                 win: tumbleWin
             };
-            
             
             tumbles.push(tumbleData);
             
@@ -451,7 +480,7 @@ export class ResultChainOrchestrator {
                 icons: {}, // No more wins
                 originalBoard: currentBoard.join(','),
                 newBoard: currentBoard.join(','), // No further changes
-                multipliers: currentMultipliers,
+                multipliers: [...accumulatedMultiplierValues], // 🎯 Preserve all accumulated values
                 win: 0
                 // No explodedSymbols or newSymbols properties
             };
@@ -1136,6 +1165,85 @@ export class ResultChainOrchestrator {
         return Promise.resolve({ totalWins, totalSpinsPlayed, freeSpinBoards });
     }
 
+
+    /**
+     * Pure function: Detect Symbol 10 positions on the board
+     * @param board - Array of 30 symbols (0-10)
+     * @returns Array of positions where Symbol 10 is found
+     */
+    private static detectSymbol10Positions(board: readonly number[]): number[] {
+        return board
+            .map((symbol, index) => symbol === 10 ? index : -1)
+            .filter(position => position !== -1);
+    }
+
+    /**
+     * Pure function: Count Symbol 10s on the board
+     * @param board - Array of 30 symbols (0-10)
+     * @returns Number of Symbol 10s found
+     */
+    private static countSymbol10s(board: readonly number[]): number {
+        return board.filter(symbol => symbol === 10).length;
+    }
+
+    /**
+     * Pure function: Generate multiplier values for Symbol 10s (2-25 range)
+     * @param count - Number of multiplier values to generate
+     * @param seed - Optional seed for deterministic testing (if undefined, uses random)
+     * @returns Array of multiplier values between 2-25
+     */
+    private static generateMultiplierValues(count: number, seed?: number): number[] {
+        const values: number[] = [];
+        let currentSeed = seed;
+        
+        for (let i = 0; i < count; i++) {
+            let randomValue: number;
+            if (currentSeed !== undefined) {
+                // Deterministic generation for testing
+                currentSeed = (currentSeed * 9301 + 49297) % 233280;
+                randomValue = currentSeed / 233280;
+            } else {
+                // Random generation for production
+                randomValue = Math.random();
+            }
+            
+            // Generate multiplier value between 2-25
+            const multiplierValue = Math.floor(randomValue * 24) + 2;
+            values.push(multiplierValue);
+        }
+        
+        return values;
+    }
+
+    /**
+     * Pure function: Accumulate multiplier values following guide requirements
+     * - Persistence: Existing values carry forward to subsequent tumbles
+     * - Addition: New Symbol 10s add their values to existing arrays  
+     * - Never Reset: Arrays never lose values during cascades, only add new ones
+     * 
+     * @param existingValues - Current accumulated multiplier values
+     * @param newValues - New multiplier values from Symbol 10s in current tumble
+     * @param isFirstTumble - Whether this is the first tumble (includes initial multipliers)
+     * @returns New accumulated multiplier values array
+     */
+    private static accumulateMultiplierValues(
+        existingValues: readonly number[],
+        newValues: readonly number[],
+        isFirstTumble: boolean
+    ): number[] {
+        // Guide pattern: [6, 6] → [6, 6, 2] → [6, 6, 2]
+        // Always preserve existing values and append new ones
+        return [...existingValues, ...newValues];
+    }
+
+    /**
+     * Pure function: Calculate total multiplier sum from accumulated values
+     * @param multiplierValues - Array of accumulated multiplier values
+     * @returns Sum of all multiplier values
+     */
+    private static calculateMultiplierSum(multiplierValues: readonly number[]): number {
+        return multiplierValues.reduce((sum, value) => sum + value, 0);
+    }
 
     /**
      * Calculate tumble statistics from boards
