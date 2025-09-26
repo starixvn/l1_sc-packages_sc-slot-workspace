@@ -18,6 +18,8 @@
     "db:connect": "node --experimental-specifier-resolution=node --loader ts-node/esm tests/scripts/db-connect-test.ts",
     "cascading-slot": "node --experimental-specifier-resolution=node --loader ts-node/esm src/cascading-slot/statistic-reporter.ts",
     "test-simple": "node --experimental-specifier-resolution=node --loader ts-node/esm tests/test-patterns-simple.ts",
+    "collect-multipliers": "node --experimental-specifier-resolution=node --loader ts-node/esm src/scripts/multiplier-collector.ts",
+    "verify-chain-multipliers": "node --experimental-specifier-resolution=node --loader ts-node/esm src/scripts/verify-chain-multipliers.ts",
     "db:reset": "ts-node src/scripts/reset-database.ts",
     "lint": "eslint src/**/*.ts",
     "lint:fix": "eslint src/**/*.ts --fix",

@@ -407,13 +407,13 @@ export class ResultChainOrchestrator {
             const tumbleWin = this.calculateTumbleWin(winSymbols, baseBetAmount, currentBoard);
             totalWin += tumbleWin;
             
-            // Create tumble data using BoardGenerator's complete multiplier state
+            // Create tumble data with correct multiplier context
             const tumbleData = {
                 originalBoard: currentBoard.join(','),
                 newBoard: tumbleResult.newBoard.join(','),
                 explodedSymbols: tumbleResult.explodedSymbols,     // ✅ CORRECT: -1 for not exploded, symbol value for exploded
                 newSymbols: tumbleResult.newSymbols,               // ✅ Keep BoardGenerator cascading physics
-                multipliers: [...tumbleResult.multipliers],        // 🎯 FIXED: Use BoardGenerator's position-based multipliers directly
+                multipliers: [...currentMultipliers],              // 🎯 FIXED: Use multipliers for originalBoard, not newBoard
                 icons: this.createIconsData(winSymbols, tumbleWin, currentBoard, baseBetAmount),
                 win: tumbleWin
             };
