@@ -167,12 +167,18 @@ export class BoardEnhancementOrchestrator {
             );
         }
 
-        // Place symbols using intelligent placement
+        // Place symbols using intelligent placement (only in truly empty positions)
+        // Note: boardAnalysis.emptyPositions excludes symbol 10s to preserve multiplier consistency
         const placementPositions = this.selectOptimalPositions(
             boardAnalysis,
             primarySymbol.symbol,
             symbolsNeeded
         );
+
+        // Debug: Log symbol 10 preservation
+        if (boardAnalysis.symbol10Positions.length > 0) {
+            console.log(`🔒 Preserving ${boardAnalysis.symbol10Positions.length} symbol 10s at positions: [${boardAnalysis.symbol10Positions.join(', ')}]`);
+        }
 
         const enhancedBoard = [...request.board];
         placementPositions.forEach(pos => {
@@ -184,6 +190,7 @@ export class BoardEnhancementOrchestrator {
 
         return {
             enhancedBoard,
+            // Multipliers array remains unchanged since we don't modify symbol 10 positions
             enhancedMultipliers: [...request.multipliers],
             strategy: 'single-symbol',
             symbolsPlaced: [{
@@ -236,7 +243,8 @@ export class BoardEnhancementOrchestrator {
         const enhancedBoard = [...request.board];
         const symbolsPlaced: Array<{ symbol: number; positions: number[]; reason: string }> = [];
 
-        // Place symbols for each symbol in the combination
+        // Place symbols for each symbol in the combination (only in truly empty positions)
+        // Note: selectOptimalPositions uses boardAnalysis.emptyPositions which excludes symbol 10s
         for (const symbolInfo of combination.symbols) {
             const symbolsNeeded = Math.max(0, symbolInfo.targetCount - symbolInfo.currentCount);
             if (symbolsNeeded > 0) {
@@ -263,6 +271,7 @@ export class BoardEnhancementOrchestrator {
 
         return {
             enhancedBoard,
+            // Multipliers array remains unchanged since we don't modify symbol 10 positions
             enhancedMultipliers: [...request.multipliers],
             strategy: 'multi-symbol',
             symbolsPlaced,

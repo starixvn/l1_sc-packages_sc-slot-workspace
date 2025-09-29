@@ -9,6 +9,7 @@ export interface EnhancedBoardAnalysis {
         expectedPayout: number;
     }>;
     emptyPositions: number[];
+    symbol10Positions: number[]; // Track multiplier symbol positions for consistency
     winPotential: 'none' | 'low' | 'medium' | 'high';
     boardDensity: number;
     symbolDistribution: { [reel: number]: number[] };
@@ -61,6 +62,7 @@ export class EnhancedBoardAnalyzer {
         const winningSymbols = this.identifyWinningSymbols(symbolCounts);
         const nearWinSymbols = this.identifyNearWinSymbols(symbolCounts);
         const emptyPositions = this.findEmptyPositions(board);
+        const symbol10Positions = this.findSymbol10Positions(board);
         
         // Advanced analysis
         const symbolDistribution = this.analyzeSymbolDistribution(board);
@@ -82,6 +84,7 @@ export class EnhancedBoardAnalyzer {
             winningSymbols,
             nearWinSymbols,
             emptyPositions,
+            symbol10Positions,
             winPotential,
             boardDensity,
             symbolDistribution,
@@ -155,18 +158,35 @@ export class EnhancedBoardAnalyzer {
     }
 
     /**
-     * Find empty positions on the board
+     * Find empty positions on the board (excluding symbol 10s to preserve multiplier consistency)
      */
     private findEmptyPositions(board: number[]): number[] {
         const empty: number[] = [];
         
         board.forEach((symbol, position) => {
+            // Only consider truly empty positions, not symbol 10s (multiplier symbols)
+            // This prevents multiplier mismatch when enhancement places new symbols
             if (symbol === -1 || symbol === null || symbol === undefined) {
                 empty.push(position);
             }
         });
         
         return empty;
+    }
+
+    /**
+     * Find symbol 10 positions on the board for multiplier tracking
+     */
+    private findSymbol10Positions(board: number[]): number[] {
+        const symbol10Positions: number[] = [];
+        
+        board.forEach((symbol, position) => {
+            if (symbol === 10) {
+                symbol10Positions.push(position);
+            }
+        });
+        
+        return symbol10Positions.sort((a, b) => a - b); // Sort by position for consistency
     }
 
     /**
