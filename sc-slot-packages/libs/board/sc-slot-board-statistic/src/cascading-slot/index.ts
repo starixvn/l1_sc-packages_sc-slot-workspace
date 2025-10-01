@@ -16,13 +16,7 @@ export { StatisticRunner } from './statistic-runner';
 // Core Definitions and Configuration
 export { commonDefinition, defaultOdds, boardDefinition } from './generator-definition';
 
-// Pattern and Engagement Systems
-export { EngagementPatternManager } from './engagement-patterns';
-export { FeatureTriggerSystem } from './feature-trigger-system';
-export { PatternRTPController } from './pattern-state-machine-rtp-controller';
+// Pattern and Engagement Systems (removed - not used in generate-chains)
 
-// Configuration Systems
-export * from './configs';
+// Configuration Systems (removed - not used in generate-chains)
 
-// Test Integration
-export { TestIntegration } from './test-integration';
