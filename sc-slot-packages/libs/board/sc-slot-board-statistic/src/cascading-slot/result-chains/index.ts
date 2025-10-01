@@ -12,10 +12,10 @@ export { BoardGeneratorAdapter } from './orchestration/board-generator-adapter';
 export { createPatternSpecificBoardGeneratorFactory, getPatternConfigSummary, PATTERN_CONFIGS } from './orchestration/custom-generator-configs';
 
 // Enhancement exports
-export { BoardEnhancementOrchestrator, EnhancementRequest, EnhancementResult } from './enhancement/board-enhancement-orchestrator';
-export { EnhancedBoardAnalyzer, EnhancedBoardAnalysis } from './enhancement/enhanced-board-analyzer';
-export { SymbolPrioritizer, SymbolPriorityResult } from './enhancement/symbol-prioritizer';
-export { MultiSymbolStrategy, MultiSymbolResult } from './enhancement/multi-symbol-strategy';
+export { BoardEnhancementOrchestrator, EnhancementRequest, EnhancementResult } from './win-booster/board-enhancement-orchestrator';
+export { EnhancedBoardAnalyzer, EnhancedBoardAnalysis } from './win-booster/enhanced-board-analyzer';
+export { SymbolPrioritizer, SymbolPriorityResult } from './win-booster/symbol-prioritizer';
+export { MultiSymbolStrategy, MultiSymbolResult } from './win-booster/multi-symbol-strategy';
 
 // Validation exports
 export { ChainValidator } from './validation/chain-validator';

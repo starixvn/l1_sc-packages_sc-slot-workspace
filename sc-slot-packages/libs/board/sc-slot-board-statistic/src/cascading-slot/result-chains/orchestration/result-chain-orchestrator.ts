@@ -7,7 +7,7 @@ import { Round } from "../../statistic-calculator";
 import { commonDefinition, defaultOdds } from "../../generator-definition";
 import { Difficulty } from "sc-slot-board-generator";
 import { ChainValidator } from "../validation/chain-validator";
-import { BoardEnhancementOrchestrator } from "../enhancement/board-enhancement-orchestrator";
+import { BoardEnhancementOrchestrator } from "../win-booster/board-enhancement-orchestrator";
 
 // Import board generator from the other package
 // Note: This will require adding sc-slot-board-generator as dependency
