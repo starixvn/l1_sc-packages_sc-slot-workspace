@@ -1,5 +1,5 @@
-import { NearWinSymbol, PayoutTier } from './symbol-prioritizer.js';
-import { commonDefinition } from '../generator-definition.js';
+import { NearWinSymbol, PayoutTier } from './symbol-prioritizer';
+import { commonDefinition } from '../../generator-definition';
 
 export interface MultiSymbolCombination {
     symbols: Array<{

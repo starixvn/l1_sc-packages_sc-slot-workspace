@@ -2,12 +2,12 @@
 import RoundCalculator from "sc-cascading-slot-base/src/board/round-calculator";
 import TumbleCalculator from "sc-cascading-slot-base/src/board/tumble-calculator";
 import { prop } from "ramda";
-import { RTPController, RTPConfiguration, RTPResult, BoardResult } from "./rtp-controller.js";
-import { Round } from "./statistic-calculator.js";
-import { commonDefinition, defaultOdds } from "./generator-definition.js";
+import { RTPController, RTPConfiguration, RTPResult, BoardResult } from "./rtp-controller";
+import { Round } from "../../statistic-calculator";
+import { commonDefinition, defaultOdds } from "../../generator-definition";
 import { Difficulty } from "sc-slot-board-generator";
-import { ChainValidator } from "./chain-validator.js";
-import { BoardEnhancementOrchestrator } from "./enhancement/board-enhancement-orchestrator.js";
+import { ChainValidator } from "../validation/chain-validator";
+import { BoardEnhancementOrchestrator } from "../enhancement/board-enhancement-orchestrator";
 
 // Import board generator from the other package
 // Note: This will require adding sc-slot-board-generator as dependency

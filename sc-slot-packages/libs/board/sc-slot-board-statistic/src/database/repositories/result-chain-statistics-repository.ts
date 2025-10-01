@@ -1,6 +1,6 @@
 import mongoose from 'mongoose';
 import { ResultChainStatistics, IResultChainStatistics } from '../models/result-chain-statistics.model';
-import { ResultChain as ResultChainInterface } from '../../cascading-slot/result-chain-orchestrator';
+import { ResultChain as ResultChainInterface } from '../../cascading-slot/result-chains/orchestration/result-chain-orchestrator';
 
 export interface CreateResultChainStatisticsInput {
     resultChainName: string;

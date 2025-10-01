@@ -1,6 +1,6 @@
-import { SymbolPrioritizer, SymbolPriorityResult } from './symbol-prioritizer.js';
-import { MultiSymbolStrategy, MultiSymbolResult } from './multi-symbol-strategy.js';
-import { EnhancedBoardAnalyzer, EnhancedBoardAnalysis } from './enhanced-board-analyzer.js';
+import { SymbolPrioritizer, SymbolPriorityResult } from './symbol-prioritizer';
+import { MultiSymbolStrategy, MultiSymbolResult } from './multi-symbol-strategy';
+import { EnhancedBoardAnalyzer, EnhancedBoardAnalysis } from './enhanced-board-analyzer';
 
 export interface EnhancementRequest {
     board: number[];

@@ -1,5 +1,5 @@
-import { BoardResult } from "./rtp-controller.js";
-import { Round } from "./statistic-calculator.js";
+import { BoardResult } from "../orchestration/rtp-controller";
+import { Round } from "../../statistic-calculator";
 
 /**
  * Validation results for different validation types

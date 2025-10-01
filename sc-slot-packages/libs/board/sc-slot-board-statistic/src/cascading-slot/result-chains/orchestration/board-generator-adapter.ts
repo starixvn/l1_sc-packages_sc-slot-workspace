@@ -1,5 +1,5 @@
 import { BoardGenerator, Difficulty } from "sc-slot-board-generator";
-import { boardDefinition } from "./generator-definition.js";
+import { boardDefinition } from "../../generator-definition";
 
 /**
  * Adapter to wrap sc-slot-board-generator for use in the orchestrator

@@ -6,13 +6,13 @@
  * Reuses test-pattern functionality for consistent generation
  */
 
-import { ResultChainOrchestrator } from '../cascading-slot/result-chain-orchestrator';
-import { BoardGeneratorAdapter } from '../cascading-slot/board-generator-adapter';
-import { commonDefinition } from '../cascading-slot/generator-definition';
+import { ResultChainOrchestrator } from '../orchestration/result-chain-orchestrator';
+import { BoardGeneratorAdapter } from '../orchestration/board-generator-adapter';
+import { commonDefinition } from '../../generator-definition';
 import { Difficulty } from 'sc-slot-board-generator';
 import { writeFileSync, mkdirSync, existsSync } from 'fs';
 import { join } from 'path';
-import { createPatternSpecificBoardGeneratorFactory, getPatternConfigSummary } from '../cascading-slot/custom-generator-configs';
+import { createPatternSpecificBoardGeneratorFactory, getPatternConfigSummary } from '../orchestration/custom-generator-configs';
 import { 
     BetConfiguration, 
     BET_LEVELS, 
@@ -22,7 +22,7 @@ import {
     getUniqueBetAmounts,
     getTotalBetConfigurations, 
     formatBetConfiguration 
-} from './betSettings.js';
+} from './betSettings';
 
 // Available patterns for chain generation
 const AVAILABLE_PATTERNS = {

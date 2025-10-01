@@ -1,7 +1,7 @@
 // Pattern State Machine RTP Controller
 // Implementation of Option A: Extends RTPController with emotional engagement patterns
 
-import { RTPController, RTPConfiguration, BoardResult, RTPResult } from "./rtp-controller.js";
+import { RTPController, RTPConfiguration, BoardResult, RTPResult } from "./result-chains/orchestration/rtp-controller";
 import { 
     EngagementPattern, 
     PatternProgress, 

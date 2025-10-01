@@ -1,7 +1,7 @@
 /**
  * Test script to verify the enhanced board processing is integrated into generate-chains
  */
-import { ResultChainOrchestrator } from './result-chain-orchestrator.js';
+import { ResultChainOrchestrator } from './result-chains/orchestration/result-chain-orchestrator';
 import { commonDefinition } from './generator-definition.js';
 import { Difficulty } from 'sc-slot-board-generator';
 

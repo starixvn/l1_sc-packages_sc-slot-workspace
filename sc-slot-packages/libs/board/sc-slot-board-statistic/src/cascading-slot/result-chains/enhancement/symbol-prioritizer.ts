@@ -1,4 +1,4 @@
-import { defaultOdds, commonDefinition } from '../generator-definition.js';
+import { defaultOdds, commonDefinition } from '../../generator-definition';
 
 export interface NearWinSymbol {
     symbol: number;
