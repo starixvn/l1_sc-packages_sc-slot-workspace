@@ -23,11 +23,14 @@ The `preGeneratedResult` array provides pre-calculated cascading slot data to `R
 const preGeneratedResult = [
   // Item 1: Creates first tumble (must have winning combination to cascade)
   {
+    originalBoard: [
+      /* 30 integers for 6x5 board - initial state before any processing */
+    ],
     newBoard: [
       /* 30 integers for 6x5 board with winning symbols */
     ],
     multipliers: [
-      /* multiplier values */
+      /* multiplier values corresponding to Symbol 10s on newBoard */
     ],
     icons: {}, // Always empty - calculated by TumbleCalculator
     explodedSymbols: [], // Not used for tumble creation
@@ -36,11 +39,14 @@ const preGeneratedResult = [
 
   // Item 2: Provides explodedSymbols to first tumble AND creates second tumble (no wins)
   {
+    originalBoard: [
+      /* board state before this tumble's processing */
+    ],
     newBoard: [
       /* board after cascade - becomes second tumble (should have NO wins) */
     ],
     multipliers: [
-      /* carried forward */
+      /* accumulated multipliers - may include new values if new Symbol 10s appeared */
     ],
     icons: {},
     explodedSymbols: [
@@ -100,42 +106,42 @@ The system now properly accumulates multiplier values across tumbles following t
 
 ### Accumulation Examples
 
-#### Example 1: Single Symbol 10 Accumulation
+#### Example 1: New Symbol 10 During Cascade
 ```javascript
-// Initial state
+// Initial state: 2 Symbol 10s on board
 multipliers: [8, 14]
 
-// Tumble 1: Board has 1 Symbol 10 → generates [12]
-// Before: [8, 14]
-// After:  [8, 14, 12] (Sum: 34)
+// Tumble 1: Cascade brings in 1 NEW Symbol 10 → generates [12]
+// Before: [8, 14] (2 Symbol 10s)
+// After:  [8, 14, 12] (3 Symbol 10s total, Sum: 34)
 
 // Final win calculation: baseWin × 34
 ```
 
-#### Example 2: Multi-Tumble Accumulation
+#### Example 2: Multiple Cascades with New Symbol 10s
 ```javascript
-// Initial state
+// Initial state: 2 Symbol 10s on board
 multipliers: [5, 15]
 
-// Tumble 1: Board has 1 Symbol 10 → generates [18]
-// Before: [5, 15]
-// After:  [5, 15, 18] (Sum: 38)
+// Tumble 1: Cascade brings in 1 NEW Symbol 10 → generates [18]
+// Before: [5, 15] (2 Symbol 10s)
+// After:  [5, 15, 18] (3 Symbol 10s total, Sum: 38)
 
-// Tumble 2: Board has 1 Symbol 10 → generates [21]
-// Before: [5, 15, 18]
-// After:  [5, 15, 18, 21] (Sum: 59)
+// Tumble 2: Another cascade brings in 1 NEW Symbol 10 → generates [21]
+// Before: [5, 15, 18] (3 Symbol 10s)
+// After:  [5, 15, 18, 21] (4 Symbol 10s total, Sum: 59)
 
 // Final win calculation: baseWin × 59
 ```
 
-#### Example 3: Multiple Symbol 10s in Single Tumble
+#### Example 3: Multiple New Symbol 10s in Single Cascade
 ```javascript
-// Initial state
+// Initial state: 4 Symbol 10s on board
 multipliers: [11, 5, 12, 3]
 
-// Tumble 1: Board has 2 Symbol 10s → generates [18, 20]
-// Before: [11, 5, 12, 3]
-// After:  [11, 5, 12, 3, 18, 20] (Sum: 69)
+// Tumble 1: Cascade brings in 2 NEW Symbol 10s → generates [18, 20]
+// Before: [11, 5, 12, 3] (4 Symbol 10s)
+// After:  [11, 5, 12, 3, 18, 20] (6 Symbol 10s total, Sum: 69)
 
 // Final win calculation: baseWin × 69
 ```
@@ -173,81 +179,79 @@ const preGeneratedResult = [
 ```javascript
 const preGeneratedResult = [
   {
-    newBoard: [1, 2, 3, 4, 5, 6, 7, 8, 0, 1, 2, 3, 4, 5, 6, 7, 8, 0, 1, 2, 3, 4, 5, 6, 7, 8, 0, 1, 2, 3],
-    multipliers: [1],
+    originalBoard: [1, 2, 3, 4, 5, 6, 7, 8, 0, 1, 2, 3, 4, 5, 6, 7, 8, 0, 1, 2, 3, 4, 5, 6, 7, 8, 0, 1, 2, 10],
+    newBoard: [1, 2, 3, 4, 5, 6, 7, 8, 0, 1, 2, 3, 4, 5, 6, 7, 8, 0, 1, 2, 3, 4, 5, 6, 7, 8, 0, 1, 2, 10],
+    multipliers: [12], // Symbol 10 at position 29 has multiplier value 12
     icons: {},
     explodedSymbols: [],
     newSymbols: [],
   },
   // Only 1 item needed for 1 tumble
-  // settleTumble will return false (no wins), so no cascade occurs
+  // Board has no winning combinations, so no cascade occurs
 ];
 ```
 
-### Two Tumbles (One Cascade)
+### Two Tumbles (One Cascade) - Enhanced Board
 
 ```javascript
 const preGeneratedResult = [
-  // Item 1: Creates first tumble with winning 8's
+  // Item 1: Enhanced board with winning 8's (placed by enhancement system)
   {
-    newBoard: [8, 8, 8, 1, 2, 3, 4, 5, 6, 7, 0, 1, 2, 3, 4, 5, 6, 7, 8, 0, 1, 2, 3, 4, 5, 6, 7, 8, 0, 1],
-    multipliers: [1],
-    icons: {},
-    explodedSymbols: [], // Not used for tumble creation
-    newSymbols: [], // Not used for tumble creation
-  },
-
-  // Item 2: Provides explodedSymbols to first tumble AND creates second tumble (no wins)
-  {
-    newBoard: [4, 5, 6, 1, 2, 3, 4, 5, 6, 7, 0, 1, 2, 3, 4, 5, 6, 7, 8, 0, 1, 2, 3, 4, 5, 6, 7, 8, 0, 1],
-    multipliers: [1],
-    icons: {},
-    explodedSymbols: [8, 8, 8, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1],
-    newSymbols: [4, 5, 6, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1],
-  },
-];
-
-// Result:
-// - First tumble gets explodedSymbols (it was a winner)
-// - Second tumble gets NO explodedSymbols (cascade stops because it has no wins)
-```
-
-### Three Tumbles (Two Cascades)
-
-```javascript
-const preGeneratedResult = [
-  // Item 1: Creates first tumble with winning 8's
-  {
-    newBoard: [8, 8, 8, 1, 2, 3, 4, 5, 6, 7, 0, 1, 2, 3, 4, 5, 6, 7, 8, 0, 1, 2, 3, 4, 5, 6, 7, 8, 0, 1],
-    multipliers: [1],
+    originalBoard: [-1, -1, -1, -1, -1, -1, -1, -1, 0, 1, 2, 3, 4, 5, 6, 7, 8, 0, 1, 2, 3, 4, 5, 6, 7, 10, 0, 1, 2, 3],
+    newBoard: [8, 8, 8, 8, 8, 8, 8, 8, 0, 1, 2, 3, 4, 5, 6, 7, 8, 0, 1, 2, 3, 4, 5, 6, 7, 10, 0, 1, 2, 3],
+    multipliers: [15], // Symbol 10 at position 25, preserved during enhancement
     icons: {},
     explodedSymbols: [],
     newSymbols: [],
   },
 
-  // Item 2: Provides explodedSymbols to first tumble AND creates second tumble (also has wins!)
+  // Item 2: After cascade - Symbol 10 preserved, new symbols filled in
   {
-    newBoard: [7, 7, 7, 1, 2, 3, 4, 5, 6, 7, 0, 1, 2, 3, 4, 5, 6, 7, 8, 0, 1, 2, 3, 4, 5, 6, 7, 8, 0, 1],
-    multipliers: [1],
+    originalBoard: [8, 8, 8, 8, 8, 8, 8, 8, 0, 1, 2, 3, 4, 5, 6, 7, 8, 0, 1, 2, 3, 4, 5, 6, 7, 10, 0, 1, 2, 3],
+    newBoard: [4, 5, 6, 1, 2, 3, 7, 0, 0, 1, 2, 3, 4, 5, 6, 7, 8, 0, 1, 2, 3, 4, 5, 6, 7, 10, 0, 1, 2, 3],
+    multipliers: [15], // Same multiplier - Symbol 10 position unchanged
     icons: {},
-    explodedSymbols: [8, 8, 8, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1],
-    newSymbols: [7, 7, 7, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1],
-  },
-
-  // Item 3: Provides explodedSymbols to second tumble AND creates third tumble (no wins)
-  {
-    newBoard: [1, 2, 3, 1, 2, 3, 4, 5, 6, 7, 0, 1, 2, 3, 4, 5, 6, 7, 8, 0, 1, 2, 3, 4, 5, 6, 7, 8, 0, 1],
-    multipliers: [1],
-    icons: {},
-    explodedSymbols: [7, 7, 7, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1],
-    newSymbols: [1, 2, 3, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1],
+    explodedSymbols: [8, 8, 8, 8, 8, 8, 8, 8, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1],
+    newSymbols: [4, 5, 6, 1, 2, 3, 7, 0, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1],
   },
 ];
 
 // Result:
-// - First tumble gets explodedSymbols from Item 2 (it was a winner)
-// - Second tumble gets explodedSymbols from Item 3 (it was a winner)
-// - Third tumble gets NO explodedSymbols (cascade stops because it has no wins)
+// - Enhancement placed 8 winning symbols while preserving Symbol 10 at position 25
+// - First tumble wins and cascades, Symbol 10 remains untouched
+// - Second tumble has no wins, cascade stops
+```
+
+### Multiplier Accumulation Example
+
+```javascript
+const preGeneratedResult = [
+  // Item 1: Board with existing Symbol 10s
+  {
+    originalBoard: [8, 8, 8, 8, 8, 8, 8, 8, 0, 1, 2, 3, 4, 5, 6, 7, 8, 0, 1, 2, 3, 4, 5, 10, 7, 10, 0, 1, 2, 3],
+    newBoard: [8, 8, 8, 8, 8, 8, 8, 8, 0, 1, 2, 3, 4, 5, 6, 7, 8, 0, 1, 2, 3, 4, 5, 10, 7, 10, 0, 1, 2, 3],
+    multipliers: [8, 14], // Two Symbol 10s at positions 23, 25
+    icons: {},
+    explodedSymbols: [],
+    newSymbols: [],
+  },
+
+  // Item 2: After cascade - new Symbol 10 appears, multipliers accumulate
+  {
+    originalBoard: [8, 8, 8, 8, 8, 8, 8, 8, 0, 1, 2, 3, 4, 5, 6, 7, 8, 0, 1, 2, 3, 4, 5, 10, 7, 10, 0, 1, 2, 3],
+    newBoard: [4, 5, 6, 1, 2, 3, 7, 0, 0, 1, 2, 3, 4, 5, 6, 7, 8, 0, 1, 2, 10, 4, 5, 10, 7, 10, 0, 1, 2, 3],
+    multipliers: [8, 14, 18], // Accumulated: original [8, 14] + new Symbol 10 value [18]
+    icons: {},
+    explodedSymbols: [8, 8, 8, 8, 8, 8, 8, 8, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1],
+    newSymbols: [4, 5, 6, 1, 2, 3, 7, 0, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, 10, -1, -1, -1, -1, -1, -1, -1, -1, -1],
+  },
+];
+
+// Result:
+// - Original Symbol 10s preserved at positions 23, 25
+// - New Symbol 10 added at position 20 during cascade
+// - Multipliers accumulate: [8, 14] → [8, 14, 18]
+// - Final multiplier sum: 8 + 14 + 18 = 40x
 ```
 
 ## Validation Checklist
@@ -279,6 +283,13 @@ const preGeneratedResult = [
 - [ ] Data flow respected: oldMultipliers → explodeAndRefill → newMultipliers
 - [ ] currentMultipliers updated with BoardGenerator output for next tumble
 
+### Enhancement Multiplier Consistency Validation
+- [ ] Enhancement strategies preserve all existing Symbol 10 positions
+- [ ] Only truly empty positions (`-1`, `null`, `undefined`) used for symbol placement
+- [ ] Multiplier arrays remain unchanged during enhancement process
+- [ ] No Symbol 10s replaced or overwritten during enhancement
+- [ ] Board-multiplier correspondence maintained throughout enhancement
+
 ### Free Spin Validation
 - [ ] `isFreeSpin` boolean correctly indicates game mode
 - [ ] Free spin properties present when `isFreeSpin: true`:
@@ -303,6 +314,7 @@ const preGeneratedResult = [
 6. **Pass oldMultipliers Correctly**: BoardGenerator.explodeAndRefill() requires oldMultipliers for proper arrangement
 7. **No Manual Synchronization**: BoardGenerator handles multiplier logic internally based on board state
 8. **Respect Data Flow**: oldMultipliers → explodeAndRefill → newMultipliers → next tumble
+9. **Preserve Symbol 10s**: Enhancement never replaces Symbol 10s, maintaining multiplier consistency
 
 🔄 **The Pattern:**
 
@@ -377,48 +389,34 @@ const newValues = generateOwnMultipliers(newSymbol10Count);
 
 ## Board Enhancement Integration
 
-The system now includes intelligent board enhancement that works with multiplier accumulation:
+The system includes intelligent board enhancement that occurs **before** any tumbling begins, ensuring multiplier consistency throughout the cascade process.
 
-### Enhancement Strategy Selection
+### Enhancement Flow
 
-The system automatically selects the optimal enhancement strategy based on target multipliers:
+1. **Initial Board Generation**: `BoardGenerator.generate()` creates board with Symbol 10s and corresponding multipliers
+2. **Board Enhancement**: If target win > 0, enhancement strategies place additional winning symbols
+3. **Multiplier Preservation**: Enhancement **never replaces Symbol 10s**, maintaining multiplier array consistency
+4. **Tumble Processing**: Enhanced board enters tumble cascade with correct multiplier mapping
 
-```typescript
-// Strategy selection logic
-if (canReachTarget) {
-    return 'single-symbol';           // Direct achievement
-}
-if (targetMultiplier > 10.0) {
-    return 'multiplier-generation';   // High targets → Place Symbol 10s
-}
-if (goodAlternatives.length >= 1 && targetMultiplier > 2.0) {
-    return 'multi-symbol';           // Complex combinations
-}
-return 'multiplier-boost';           // Use existing multipliers
-```
+### Strategy Selection
 
-### Multiplier-Generation Strategy
+The system automatically selects optimal enhancement strategies:
 
-For extreme high targets (>10x), the system automatically:
+- **Single-Symbol**: Direct achievement by placing one symbol type
+- **Multi-Symbol**: Complex combinations for moderate targets  
+- **Multiplier-Boost**: Leverage existing multipliers with minimal symbol changes
 
-1. **Calculates Needed Multipliers**: `neededSum = targetMultiplier × 20`
-2. **Places Symbol 10s**: Adds Symbol 10s to empty board positions
-3. **Generates Values**: Creates random multiplier values (2-25 range)
-4. **Accumulates**: Appends new values to existing multiplier array
-5. **Validates**: Ensures target multiplier sum is achieved
+### Critical Multiplier Rules
+
+**✅ Symbol 10 Preservation**: Enhancement strategies only place symbols in truly empty positions (`-1`, `null`, `undefined`), never replacing existing Symbol 10s.
+
+**✅ Multiplier Consistency**: The `multipliers` array remains unchanged during enhancement, ensuring perfect correspondence with Symbol 10 positions.
+
+**✅ No Mismatch Risk**: Since enhancement occurs before `explodeAndRefill`, there's no risk of multiplier-board desynchronization.
 
 ### Target Win Adjustment
 
-When boards have existing multipliers, target wins are automatically adjusted:
-
-```typescript
-// Example: Target 50x with existing 20x multipliers
-const adjustedTarget = 50 / 20 = 2.5x  // Adjusted for raw tumble wins
-// System places symbols to achieve 2.5x raw win
-// Final result: 2.5x × 20x = 50x total
-```
-
-This ensures accurate target achievement while respecting multiplier accumulation rules.
+When boards have existing multipliers, target wins are automatically adjusted to account for multiplier effects, ensuring accurate target achievement while respecting accumulation rules.
 
 ## Output Format Compliance
 
