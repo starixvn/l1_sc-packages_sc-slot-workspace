@@ -13,6 +13,9 @@ export { StatisticCalculator } from './statistic-calculator';
 export { StatisticReporter } from './statistic-reporter';
 export { StatisticRunner } from './statistic-runner';
 
+// Analyzers Module - Multiplier collection and analysis tools
+export * from './analyzers';
+
 // Core Definitions and Configuration
 export { commonDefinition, defaultOdds, boardDefinition } from './generator-definition';
 

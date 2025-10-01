@@ -6,12 +6,12 @@
  * Saves settlement data to JSON files
  */
 
-import { spinABatch, BatchOptions } from "../cascading-slot/statistic-runner";
-import { Round, Statistic } from "../cascading-slot/statistic-calculator";
+import { spinABatch, BatchOptions } from "../statistic-runner";
+import { Round, Statistic } from "../statistic-calculator";
 import { Difficulty } from "sc-slot-board-generator";
 import { writeFileSync } from "fs";
 import { join } from "path";
-import { boardDefinition, commonDefinition } from "../cascading-slot/generator-definition";
+import { boardDefinition, commonDefinition } from "../generator-definition";
 
 interface MultiplierSpinData {
   batchId: number;
