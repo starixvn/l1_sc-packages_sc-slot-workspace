@@ -1,0 +1,156 @@
+{
+  "timestamp": "2025-09-26T07:43:47.274Z",
+  "config": {
+    "patterns": [
+      "wave"
+    ],
+    "boardCounts": [
+      100
+    ],
+    "targetRTP": 0.97,
+    "createdBy": "script-generator",
+    "maxRetries": 10,
+    "tolerance": 0.02,
+    "outputDir": "./chain-output",
+    "betAmounts": [
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      10
+    ]
+  },
+  "summary": {
+    "total": 10,
+    "successful": 10,
+    "failed": 0,
+    "successRate": 100
+  },
+  "results": [
+    {
+      "success": true,
+      "chainName": "wave-100boards-bet1_00-1758872547451",
+      "filename": "wave-100boards-bet1_00-1758872547451.json",
+      "actualRTP": 0.9615,
+      "generationStats": {
+        "attempts": 1,
+        "duration": 8942,
+        "finalRTP": 0.9615,
+        "targetAchieved": true
+      }
+    },
+    {
+      "success": true,
+      "chainName": "wave-100boards-bet2_00-1758872556911",
+      "filename": "wave-100boards-bet2_00-1758872556911.json",
+      "actualRTP": 0.971,
+      "generationStats": {
+        "attempts": 1,
+        "duration": 8024,
+        "finalRTP": 0.971,
+        "targetAchieved": true
+      }
+    },
+    {
+      "success": true,
+      "chainName": "wave-100boards-bet3_00-1758872565453",
+      "filename": "wave-100boards-bet3_00-1758872565453.json",
+      "actualRTP": 0.9765,
+      "generationStats": {
+        "attempts": 1,
+        "duration": 6956,
+        "finalRTP": 0.9765,
+        "targetAchieved": true
+      }
+    },
+    {
+      "success": true,
+      "chainName": "wave-100boards-bet4_00-1758872572921",
+      "filename": "wave-100boards-bet4_00-1758872572921.json",
+      "actualRTP": 0.9505,
+      "generationStats": {
+        "attempts": 1,
+        "duration": 10425,
+        "finalRTP": 0.9505,
+        "targetAchieved": true
+      }
+    },
+    {
+      "success": true,
+      "chainName": "wave-100boards-bet5_00-1758872583852",
+      "filename": "wave-100boards-bet5_00-1758872583852.json",
+      "actualRTP": 0.9565,
+      "generationStats": {
+        "attempts": 1,
+        "duration": 3399,
+        "finalRTP": 0.9565,
+        "targetAchieved": true
+      }
+    },
+    {
+      "success": true,
+      "chainName": "wave-100boards-bet6_00-1758872587761",
+      "filename": "wave-100boards-bet6_00-1758872587761.json",
+      "actualRTP": 0.954,
+      "generationStats": {
+        "attempts": 1,
+        "duration": 23927,
+        "finalRTP": 0.954,
+        "targetAchieved": true
+      }
+    },
+    {
+      "success": true,
+      "chainName": "wave-100boards-bet7_00-1758872612197",
+      "filename": "wave-100boards-bet7_00-1758872612197.json",
+      "actualRTP": 0.955,
+      "generationStats": {
+        "attempts": 1,
+        "duration": 2714,
+        "finalRTP": 0.955,
+        "targetAchieved": true
+      }
+    },
+    {
+      "success": true,
+      "chainName": "wave-100boards-bet8_00-1758872615420",
+      "filename": "wave-100boards-bet8_00-1758872615420.json",
+      "actualRTP": 0.959,
+      "generationStats": {
+        "attempts": 1,
+        "duration": 3466,
+        "finalRTP": 0.959,
+        "targetAchieved": true
+      }
+    },
+    {
+      "success": true,
+      "chainName": "wave-100boards-bet9_00-1758872619394",
+      "filename": "wave-100boards-bet9_00-1758872619394.json",
+      "actualRTP": 0.966,
+      "generationStats": {
+        "attempts": 1,
+        "duration": 2648,
+        "finalRTP": 0.966,
+        "targetAchieved": true
+      }
+    },
+    {
+      "success": true,
+      "chainName": "wave-100boards-bet10_00-1758872622562",
+      "filename": "wave-100boards-bet10_00-1758872622562.json",
+      "actualRTP": 0.9795,
+      "generationStats": {
+        "attempts": 1,
+        "duration": 4189,
+        "finalRTP": 0.9795,
+        "targetAchieved": true
+      }
+    }
+  ]
+}

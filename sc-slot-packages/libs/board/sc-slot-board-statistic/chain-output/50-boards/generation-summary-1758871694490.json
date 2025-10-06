@@ -1,0 +1,156 @@
+{
+  "timestamp": "2025-09-26T07:28:14.489Z",
+  "config": {
+    "patterns": [
+      "comeback"
+    ],
+    "boardCounts": [
+      50
+    ],
+    "targetRTP": 0.97,
+    "createdBy": "script-generator",
+    "maxRetries": 10,
+    "tolerance": 0.02,
+    "outputDir": "./chain-output",
+    "betAmounts": [
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      10
+    ]
+  },
+  "summary": {
+    "total": 10,
+    "successful": 10,
+    "failed": 0,
+    "successRate": 100
+  },
+  "results": [
+    {
+      "success": true,
+      "chainName": "comeback-50boards-bet1_00-1758871601651",
+      "filename": "comeback-50boards-bet1_00-1758871601651.json",
+      "actualRTP": 0.907,
+      "generationStats": {
+        "attempts": 1,
+        "duration": 17055,
+        "finalRTP": 0.907,
+        "targetAchieved": false
+      }
+    },
+    {
+      "success": true,
+      "chainName": "comeback-50boards-bet2_00-1758871619217",
+      "filename": "comeback-50boards-bet2_00-1758871619217.json",
+      "actualRTP": 0.952,
+      "generationStats": {
+        "attempts": 1,
+        "duration": 7647,
+        "finalRTP": 0.952,
+        "targetAchieved": true
+      }
+    },
+    {
+      "success": true,
+      "chainName": "comeback-50boards-bet3_00-1758871627379",
+      "filename": "comeback-50boards-bet3_00-1758871627379.json",
+      "actualRTP": 0.964,
+      "generationStats": {
+        "attempts": 1,
+        "duration": 1506,
+        "finalRTP": 0.964,
+        "targetAchieved": true
+      }
+    },
+    {
+      "success": true,
+      "chainName": "comeback-50boards-bet4_00-1758871629402",
+      "filename": "comeback-50boards-bet4_00-1758871629402.json",
+      "actualRTP": 0.961,
+      "generationStats": {
+        "attempts": 1,
+        "duration": 1952,
+        "finalRTP": 0.961,
+        "targetAchieved": true
+      }
+    },
+    {
+      "success": true,
+      "chainName": "comeback-50boards-bet5_00-1758871631864",
+      "filename": "comeback-50boards-bet5_00-1758871631864.json",
+      "actualRTP": 0.983,
+      "generationStats": {
+        "attempts": 1,
+        "duration": 8513,
+        "finalRTP": 0.983,
+        "targetAchieved": true
+      }
+    },
+    {
+      "success": true,
+      "chainName": "comeback-50boards-bet6_00-1758871640881",
+      "filename": "comeback-50boards-bet6_00-1758871640881.json",
+      "actualRTP": 0.94,
+      "generationStats": {
+        "attempts": 1,
+        "duration": 19866,
+        "finalRTP": 0.94,
+        "targetAchieved": false
+      }
+    },
+    {
+      "success": true,
+      "chainName": "comeback-50boards-bet7_00-1758871661265",
+      "filename": "comeback-50boards-bet7_00-1758871661265.json",
+      "actualRTP": 0.959,
+      "generationStats": {
+        "attempts": 1,
+        "duration": 4382,
+        "finalRTP": 0.959,
+        "targetAchieved": true
+      }
+    },
+    {
+      "success": true,
+      "chainName": "comeback-50boards-bet8_00-1758871666164",
+      "filename": "comeback-50boards-bet8_00-1758871666164.json",
+      "actualRTP": 0.988,
+      "generationStats": {
+        "attempts": 1,
+        "duration": 3642,
+        "finalRTP": 0.988,
+        "targetAchieved": true
+      }
+    },
+    {
+      "success": true,
+      "chainName": "comeback-50boards-bet9_00-1758871670322",
+      "filename": "comeback-50boards-bet9_00-1758871670322.json",
+      "actualRTP": 0.963,
+      "generationStats": {
+        "attempts": 1,
+        "duration": 5057,
+        "finalRTP": 0.963,
+        "targetAchieved": true
+      }
+    },
+    {
+      "success": true,
+      "chainName": "comeback-50boards-bet10_00-1758871675882",
+      "filename": "comeback-50boards-bet10_00-1758871675882.json",
+      "actualRTP": 0.944,
+      "generationStats": {
+        "attempts": 1,
+        "duration": 18092,
+        "finalRTP": 0.944,
+        "targetAchieved": false
+      }
+    }
+  ]
+}
