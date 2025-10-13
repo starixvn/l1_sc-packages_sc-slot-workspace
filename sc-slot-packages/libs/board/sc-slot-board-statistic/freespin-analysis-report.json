@@ -1,0 +1,1083 @@
+{
+  "timestamp": "2025-10-13T08:26:37.340Z",
+  "summary": {
+    "totalChainFiles": 95,
+    "totalBoards": 6700,
+    "freeSpinStatistics": {
+      "totalTriggers": 3997,
+      "totalFreeSpinsAwarded": 1500,
+      "totalRetriggers": 0,
+      "totalRetriggerSpins": 0
+    },
+    "scatterDistribution": {
+      "1": 2570,
+      "2": 1059,
+      "3": 268,
+      "4": 84,
+      "5": 16,
+      "6": 0
+    },
+    "averagesPerChain": {
+      "triggersPerChain": 42.07368421052632,
+      "freeSpinsPerChain": 15.789473684210526,
+      "retriggersPerChain": 0,
+      "retriggerSpinsPerChain": 0
+    },
+    "freeSpinAwardPatterns": {
+      "standardAward": "Based on generator-definition.ts configuration",
+      "baseGameTriggers": {
+        "4": "15 free spins + 60x payout",
+        "5": "15 free spins + 100x payout",
+        "6": "15 free spins + 2000x payout"
+      },
+      "retriggerAward": "5 additional spins for 3+ scatters during free spins"
+    }
+  },
+  "detailedAnalyses": [
+    {
+      "fileName": "tease-100boards-bet10_00-1759127125328.json",
+      "statistics": {
+        "triggersCount": 53,
+        "totalFreeSpinsAwarded": 45,
+        "retriggersCount": 0,
+        "totalRetriggerSpins": 0
+      },
+      "triggerCount": 53,
+      "retriggerCount": 0
+    },
+    {
+      "fileName": "tease-100boards-bet1_00-1759126992529.json",
+      "statistics": {
+        "triggersCount": 59,
+        "totalFreeSpinsAwarded": 30,
+        "retriggersCount": 0,
+        "totalRetriggerSpins": 0
+      },
+      "triggerCount": 59,
+      "retriggerCount": 0
+    },
+    {
+      "fileName": "tease-100boards-bet2_00-1759126996832.json",
+      "statistics": {
+        "triggersCount": 55,
+        "totalFreeSpinsAwarded": 30,
+        "retriggersCount": 0,
+        "totalRetriggerSpins": 0
+      },
+      "triggerCount": 55,
+      "retriggerCount": 0
+    },
+    {
+      "fileName": "tease-100boards-bet3_00-1759127019586.json",
+      "statistics": {
+        "triggersCount": 63,
+        "totalFreeSpinsAwarded": 45,
+        "retriggersCount": 0,
+        "totalRetriggerSpins": 0
+      },
+      "triggerCount": 63,
+      "retriggerCount": 0
+    },
+    {
+      "fileName": "tease-100boards-bet4_00-1759127026057.json",
+      "statistics": {
+        "triggersCount": 60,
+        "totalFreeSpinsAwarded": 60,
+        "retriggersCount": 0,
+        "totalRetriggerSpins": 0
+      },
+      "triggerCount": 60,
+      "retriggerCount": 0
+    },
+    {
+      "fileName": "tease-100boards-bet5_00-1759127057099.json",
+      "statistics": {
+        "triggersCount": 63,
+        "totalFreeSpinsAwarded": 15,
+        "retriggersCount": 0,
+        "totalRetriggerSpins": 0
+      },
+      "triggerCount": 63,
+      "retriggerCount": 0
+    },
+    {
+      "fileName": "tease-100boards-bet6_00-1759127065946.json",
+      "statistics": {
+        "triggersCount": 65,
+        "totalFreeSpinsAwarded": 30,
+        "retriggersCount": 0,
+        "totalRetriggerSpins": 0
+      },
+      "triggerCount": 65,
+      "retriggerCount": 0
+    },
+    {
+      "fileName": "tease-100boards-bet7_00-1759127084757.json",
+      "statistics": {
+        "triggersCount": 62,
+        "totalFreeSpinsAwarded": 30,
+        "retriggersCount": 0,
+        "totalRetriggerSpins": 0
+      },
+      "triggerCount": 62,
+      "retriggerCount": 0
+    },
+    {
+      "fileName": "tease-100boards-bet8_00-1759127087969.json",
+      "statistics": {
+        "triggersCount": 68,
+        "totalFreeSpinsAwarded": 0,
+        "retriggersCount": 0,
+        "totalRetriggerSpins": 0
+      },
+      "triggerCount": 68,
+      "retriggerCount": 0
+    },
+    {
+      "fileName": "tease-100boards-bet9_00-1759127095053.json",
+      "statistics": {
+        "triggersCount": 60,
+        "totalFreeSpinsAwarded": 60,
+        "retriggersCount": 0,
+        "totalRetriggerSpins": 0
+      },
+      "triggerCount": 60,
+      "retriggerCount": 0
+    },
+    {
+      "fileName": "wave-100boards-bet10_00-1758872622562.json",
+      "statistics": {
+        "triggersCount": 50,
+        "totalFreeSpinsAwarded": 0,
+        "retriggersCount": 0,
+        "totalRetriggerSpins": 0
+      },
+      "triggerCount": 50,
+      "retriggerCount": 0
+    },
+    {
+      "fileName": "wave-100boards-bet1_00-1758872547451.json",
+      "statistics": {
+        "triggersCount": 59,
+        "totalFreeSpinsAwarded": 15,
+        "retriggersCount": 0,
+        "totalRetriggerSpins": 0
+      },
+      "triggerCount": 59,
+      "retriggerCount": 0
+    },
+    {
+      "fileName": "wave-100boards-bet4_00-1758872572921.json",
+      "statistics": {
+        "triggersCount": 67,
+        "totalFreeSpinsAwarded": 15,
+        "retriggersCount": 0,
+        "totalRetriggerSpins": 0
+      },
+      "triggerCount": 67,
+      "retriggerCount": 0
+    },
+    {
+      "fileName": "wave-100boards-bet5_00-1758872583852.json",
+      "statistics": {
+        "triggersCount": 55,
+        "totalFreeSpinsAwarded": 15,
+        "retriggersCount": 0,
+        "totalRetriggerSpins": 0
+      },
+      "triggerCount": 55,
+      "retriggerCount": 0
+    },
+    {
+      "fileName": "wave-100boards-bet6_00-1758872587761.json",
+      "statistics": {
+        "triggersCount": 59,
+        "totalFreeSpinsAwarded": 15,
+        "retriggersCount": 0,
+        "totalRetriggerSpins": 0
+      },
+      "triggerCount": 59,
+      "retriggerCount": 0
+    },
+    {
+      "fileName": "wave-100boards-bet7_00-1758872612197.json",
+      "statistics": {
+        "triggersCount": 61,
+        "totalFreeSpinsAwarded": 30,
+        "retriggersCount": 0,
+        "totalRetriggerSpins": 0
+      },
+      "triggerCount": 61,
+      "retriggerCount": 0
+    },
+    {
+      "fileName": "wave-100boards-bet8_00-1758872615420.json",
+      "statistics": {
+        "triggersCount": 60,
+        "totalFreeSpinsAwarded": 30,
+        "retriggersCount": 0,
+        "totalRetriggerSpins": 0
+      },
+      "triggerCount": 60,
+      "retriggerCount": 0
+    },
+    {
+      "fileName": "wave-100boards-bet9_00-1758872619394.json",
+      "statistics": {
+        "triggersCount": 63,
+        "totalFreeSpinsAwarded": 15,
+        "retriggersCount": 0,
+        "totalRetriggerSpins": 0
+      },
+      "triggerCount": 63,
+      "retriggerCount": 0
+    },
+    {
+      "fileName": "tease-125boards-bet10_00-1758873088018.json",
+      "statistics": {
+        "triggersCount": 72,
+        "totalFreeSpinsAwarded": 15,
+        "retriggersCount": 0,
+        "totalRetriggerSpins": 0
+      },
+      "triggerCount": 72,
+      "retriggerCount": 0
+    },
+    {
+      "fileName": "tease-125boards-bet1_00-1758872928848.json",
+      "statistics": {
+        "triggersCount": 81,
+        "totalFreeSpinsAwarded": 30,
+        "retriggersCount": 0,
+        "totalRetriggerSpins": 0
+      },
+      "triggerCount": 81,
+      "retriggerCount": 0
+    },
+    {
+      "fileName": "tease-125boards-bet2_00-1758872936633.json",
+      "statistics": {
+        "triggersCount": 77,
+        "totalFreeSpinsAwarded": 15,
+        "retriggersCount": 0,
+        "totalRetriggerSpins": 0
+      },
+      "triggerCount": 77,
+      "retriggerCount": 0
+    },
+    {
+      "fileName": "tease-125boards-bet3_00-1758872954847.json",
+      "statistics": {
+        "triggersCount": 74,
+        "totalFreeSpinsAwarded": 30,
+        "retriggersCount": 0,
+        "totalRetriggerSpins": 0
+      },
+      "triggerCount": 74,
+      "retriggerCount": 0
+    },
+    {
+      "fileName": "tease-125boards-bet4_00-1758872994642.json",
+      "statistics": {
+        "triggersCount": 66,
+        "totalFreeSpinsAwarded": 45,
+        "retriggersCount": 0,
+        "totalRetriggerSpins": 0
+      },
+      "triggerCount": 66,
+      "retriggerCount": 0
+    },
+    {
+      "fileName": "tease-125boards-bet5_00-1758873013133.json",
+      "statistics": {
+        "triggersCount": 67,
+        "totalFreeSpinsAwarded": 15,
+        "retriggersCount": 0,
+        "totalRetriggerSpins": 0
+      },
+      "triggerCount": 67,
+      "retriggerCount": 0
+    },
+    {
+      "fileName": "tease-125boards-bet8_00-1758873046286.json",
+      "statistics": {
+        "triggersCount": 72,
+        "totalFreeSpinsAwarded": 15,
+        "retriggersCount": 0,
+        "totalRetriggerSpins": 0
+      },
+      "triggerCount": 72,
+      "retriggerCount": 0
+    },
+    {
+      "fileName": "tease-125boards-bet9_00-1758873079514.json",
+      "statistics": {
+        "triggersCount": 68,
+        "totalFreeSpinsAwarded": 30,
+        "retriggersCount": 0,
+        "totalRetriggerSpins": 0
+      },
+      "triggerCount": 68,
+      "retriggerCount": 0
+    },
+    {
+      "fileName": "cliffhanger-50boards-bet10_00-1759740790227.json",
+      "statistics": {
+        "triggersCount": 26,
+        "totalFreeSpinsAwarded": 15,
+        "retriggersCount": 0,
+        "totalRetriggerSpins": 0
+      },
+      "triggerCount": 26,
+      "retriggerCount": 0
+    },
+    {
+      "fileName": "cliffhanger-50boards-bet1_00-1759740708534.json",
+      "statistics": {
+        "triggersCount": 30,
+        "totalFreeSpinsAwarded": 0,
+        "retriggersCount": 0,
+        "totalRetriggerSpins": 0
+      },
+      "triggerCount": 30,
+      "retriggerCount": 0
+    },
+    {
+      "fileName": "cliffhanger-50boards-bet2_00-1759740721416.json",
+      "statistics": {
+        "triggersCount": 25,
+        "totalFreeSpinsAwarded": 15,
+        "retriggersCount": 0,
+        "totalRetriggerSpins": 0
+      },
+      "triggerCount": 25,
+      "retriggerCount": 0
+    },
+    {
+      "fileName": "cliffhanger-50boards-bet3_00-1759740734737.json",
+      "statistics": {
+        "triggersCount": 32,
+        "totalFreeSpinsAwarded": 15,
+        "retriggersCount": 0,
+        "totalRetriggerSpins": 0
+      },
+      "triggerCount": 32,
+      "retriggerCount": 0
+    },
+    {
+      "fileName": "cliffhanger-50boards-bet4_00-1759740738106.json",
+      "statistics": {
+        "triggersCount": 26,
+        "totalFreeSpinsAwarded": 0,
+        "retriggersCount": 0,
+        "totalRetriggerSpins": 0
+      },
+      "triggerCount": 26,
+      "retriggerCount": 0
+    },
+    {
+      "fileName": "cliffhanger-50boards-bet5_00-1759740739679.json",
+      "statistics": {
+        "triggersCount": 35,
+        "totalFreeSpinsAwarded": 15,
+        "retriggersCount": 0,
+        "totalRetriggerSpins": 0
+      },
+      "triggerCount": 35,
+      "retriggerCount": 0
+    },
+    {
+      "fileName": "cliffhanger-50boards-bet6_00-1759740752962.json",
+      "statistics": {
+        "triggersCount": 24,
+        "totalFreeSpinsAwarded": 15,
+        "retriggersCount": 0,
+        "totalRetriggerSpins": 0
+      },
+      "triggerCount": 24,
+      "retriggerCount": 0
+    },
+    {
+      "fileName": "cliffhanger-50boards-bet7_00-1759740754836.json",
+      "statistics": {
+        "triggersCount": 31,
+        "totalFreeSpinsAwarded": 15,
+        "retriggersCount": 0,
+        "totalRetriggerSpins": 0
+      },
+      "triggerCount": 31,
+      "retriggerCount": 0
+    },
+    {
+      "fileName": "cliffhanger-50boards-bet8_00-1759740763002.json",
+      "statistics": {
+        "triggersCount": 29,
+        "totalFreeSpinsAwarded": 0,
+        "retriggersCount": 0,
+        "totalRetriggerSpins": 0
+      },
+      "triggerCount": 29,
+      "retriggerCount": 0
+    },
+    {
+      "fileName": "cliffhanger-50boards-bet9_00-1759740776676.json",
+      "statistics": {
+        "triggersCount": 34,
+        "totalFreeSpinsAwarded": 15,
+        "retriggersCount": 0,
+        "totalRetriggerSpins": 0
+      },
+      "triggerCount": 34,
+      "retriggerCount": 0
+    },
+    {
+      "fileName": "comeback-50boards-bet10_00-1758871675882.json",
+      "statistics": {
+        "triggersCount": 30,
+        "totalFreeSpinsAwarded": 15,
+        "retriggersCount": 0,
+        "totalRetriggerSpins": 0
+      },
+      "triggerCount": 30,
+      "retriggerCount": 0
+    },
+    {
+      "fileName": "comeback-50boards-bet1_00-1758871601651.json",
+      "statistics": {
+        "triggersCount": 32,
+        "totalFreeSpinsAwarded": 0,
+        "retriggersCount": 0,
+        "totalRetriggerSpins": 0
+      },
+      "triggerCount": 32,
+      "retriggerCount": 0
+    },
+    {
+      "fileName": "comeback-50boards-bet2_00-1758871619217.json",
+      "statistics": {
+        "triggersCount": 25,
+        "totalFreeSpinsAwarded": 15,
+        "retriggersCount": 0,
+        "totalRetriggerSpins": 0
+      },
+      "triggerCount": 25,
+      "retriggerCount": 0
+    },
+    {
+      "fileName": "comeback-50boards-bet3_00-1758871627379.json",
+      "statistics": {
+        "triggersCount": 33,
+        "totalFreeSpinsAwarded": 15,
+        "retriggersCount": 0,
+        "totalRetriggerSpins": 0
+      },
+      "triggerCount": 33,
+      "retriggerCount": 0
+    },
+    {
+      "fileName": "comeback-50boards-bet4_00-1758871629402.json",
+      "statistics": {
+        "triggersCount": 32,
+        "totalFreeSpinsAwarded": 15,
+        "retriggersCount": 0,
+        "totalRetriggerSpins": 0
+      },
+      "triggerCount": 32,
+      "retriggerCount": 0
+    },
+    {
+      "fileName": "comeback-50boards-bet5_00-1758871631864.json",
+      "statistics": {
+        "triggersCount": 29,
+        "totalFreeSpinsAwarded": 15,
+        "retriggersCount": 0,
+        "totalRetriggerSpins": 0
+      },
+      "triggerCount": 29,
+      "retriggerCount": 0
+    },
+    {
+      "fileName": "comeback-50boards-bet6_00-1758871640881.json",
+      "statistics": {
+        "triggersCount": 31,
+        "totalFreeSpinsAwarded": 0,
+        "retriggersCount": 0,
+        "totalRetriggerSpins": 0
+      },
+      "triggerCount": 31,
+      "retriggerCount": 0
+    },
+    {
+      "fileName": "comeback-50boards-bet7_00-1758871661265.json",
+      "statistics": {
+        "triggersCount": 30,
+        "totalFreeSpinsAwarded": 15,
+        "retriggersCount": 0,
+        "totalRetriggerSpins": 0
+      },
+      "triggerCount": 30,
+      "retriggerCount": 0
+    },
+    {
+      "fileName": "comeback-50boards-bet8_00-1758871666164.json",
+      "statistics": {
+        "triggersCount": 29,
+        "totalFreeSpinsAwarded": 15,
+        "retriggersCount": 0,
+        "totalRetriggerSpins": 0
+      },
+      "triggerCount": 29,
+      "retriggerCount": 0
+    },
+    {
+      "fileName": "comeback-50boards-bet9_00-1758871670322.json",
+      "statistics": {
+        "triggersCount": 32,
+        "totalFreeSpinsAwarded": 15,
+        "retriggersCount": 0,
+        "totalRetriggerSpins": 0
+      },
+      "triggerCount": 32,
+      "retriggerCount": 0
+    },
+    {
+      "fileName": "discovery-50boards-bet0_05-1759740588399.json",
+      "statistics": {
+        "triggersCount": 36,
+        "totalFreeSpinsAwarded": 15,
+        "retriggersCount": 0,
+        "totalRetriggerSpins": 0
+      },
+      "triggerCount": 36,
+      "retriggerCount": 0
+    },
+    {
+      "fileName": "discovery-50boards-bet10_00-1759740668622.json",
+      "statistics": {
+        "triggersCount": 32,
+        "totalFreeSpinsAwarded": 15,
+        "retriggersCount": 0,
+        "totalRetriggerSpins": 0
+      },
+      "triggerCount": 32,
+      "retriggerCount": 0
+    },
+    {
+      "fileName": "discovery-50boards-bet1_00-1759740615206.json",
+      "statistics": {
+        "triggersCount": 23,
+        "totalFreeSpinsAwarded": 30,
+        "retriggersCount": 0,
+        "totalRetriggerSpins": 0
+      },
+      "triggerCount": 23,
+      "retriggerCount": 0
+    },
+    {
+      "fileName": "discovery-50boards-bet2_00-1759740620102.json",
+      "statistics": {
+        "triggersCount": 23,
+        "totalFreeSpinsAwarded": 15,
+        "retriggersCount": 0,
+        "totalRetriggerSpins": 0
+      },
+      "triggerCount": 23,
+      "retriggerCount": 0
+    },
+    {
+      "fileName": "discovery-50boards-bet3_00-1759740622130.json",
+      "statistics": {
+        "triggersCount": 34,
+        "totalFreeSpinsAwarded": 15,
+        "retriggersCount": 0,
+        "totalRetriggerSpins": 0
+      },
+      "triggerCount": 34,
+      "retriggerCount": 0
+    },
+    {
+      "fileName": "discovery-50boards-bet4_00-1759740623996.json",
+      "statistics": {
+        "triggersCount": 26,
+        "totalFreeSpinsAwarded": 0,
+        "retriggersCount": 0,
+        "totalRetriggerSpins": 0
+      },
+      "triggerCount": 26,
+      "retriggerCount": 0
+    },
+    {
+      "fileName": "discovery-50boards-bet5_00-1759740637920.json",
+      "statistics": {
+        "triggersCount": 29,
+        "totalFreeSpinsAwarded": 30,
+        "retriggersCount": 0,
+        "totalRetriggerSpins": 0
+      },
+      "triggerCount": 29,
+      "retriggerCount": 0
+    },
+    {
+      "fileName": "discovery-50boards-bet6_00-1759740642547.json",
+      "statistics": {
+        "triggersCount": 30,
+        "totalFreeSpinsAwarded": 0,
+        "retriggersCount": 0,
+        "totalRetriggerSpins": 0
+      },
+      "triggerCount": 30,
+      "retriggerCount": 0
+    },
+    {
+      "fileName": "discovery-50boards-bet7_00-1759740648496.json",
+      "statistics": {
+        "triggersCount": 29,
+        "totalFreeSpinsAwarded": 15,
+        "retriggersCount": 0,
+        "totalRetriggerSpins": 0
+      },
+      "triggerCount": 29,
+      "retriggerCount": 0
+    },
+    {
+      "fileName": "discovery-50boards-bet8_00-1759740650426.json",
+      "statistics": {
+        "triggersCount": 32,
+        "totalFreeSpinsAwarded": 45,
+        "retriggersCount": 0,
+        "totalRetriggerSpins": 0
+      },
+      "triggerCount": 32,
+      "retriggerCount": 0
+    },
+    {
+      "fileName": "discovery-50boards-bet9_00-1759740664563.json",
+      "statistics": {
+        "triggersCount": 25,
+        "totalFreeSpinsAwarded": 0,
+        "retriggersCount": 0,
+        "totalRetriggerSpins": 0
+      },
+      "triggerCount": 25,
+      "retriggerCount": 0
+    },
+    {
+      "fileName": "tease-50boards-bet10_00-1758869077392.json",
+      "statistics": {
+        "triggersCount": 29,
+        "totalFreeSpinsAwarded": 0,
+        "retriggersCount": 0,
+        "totalRetriggerSpins": 0
+      },
+      "triggerCount": 29,
+      "retriggerCount": 0
+    },
+    {
+      "fileName": "tease-50boards-bet1_00-1758869009281.json",
+      "statistics": {
+        "triggersCount": 32,
+        "totalFreeSpinsAwarded": 15,
+        "retriggersCount": 0,
+        "totalRetriggerSpins": 0
+      },
+      "triggerCount": 32,
+      "retriggerCount": 0
+    },
+    {
+      "fileName": "tease-50boards-bet2_00-1758869014181.json",
+      "statistics": {
+        "triggersCount": 34,
+        "totalFreeSpinsAwarded": 30,
+        "retriggersCount": 0,
+        "totalRetriggerSpins": 0
+      },
+      "triggerCount": 34,
+      "retriggerCount": 0
+    },
+    {
+      "fileName": "tease-50boards-bet3_00-1758869020910.json",
+      "statistics": {
+        "triggersCount": 31,
+        "totalFreeSpinsAwarded": 15,
+        "retriggersCount": 0,
+        "totalRetriggerSpins": 0
+      },
+      "triggerCount": 31,
+      "retriggerCount": 0
+    },
+    {
+      "fileName": "tease-50boards-bet4_00-1758869034279.json",
+      "statistics": {
+        "triggersCount": 30,
+        "totalFreeSpinsAwarded": 0,
+        "retriggersCount": 0,
+        "totalRetriggerSpins": 0
+      },
+      "triggerCount": 30,
+      "retriggerCount": 0
+    },
+    {
+      "fileName": "tease-50boards-bet5_00-1758869038902.json",
+      "statistics": {
+        "triggersCount": 30,
+        "totalFreeSpinsAwarded": 15,
+        "retriggersCount": 0,
+        "totalRetriggerSpins": 0
+      },
+      "triggerCount": 30,
+      "retriggerCount": 0
+    },
+    {
+      "fileName": "tease-50boards-bet6_00-1758869043359.json",
+      "statistics": {
+        "triggersCount": 32,
+        "totalFreeSpinsAwarded": 15,
+        "retriggersCount": 0,
+        "totalRetriggerSpins": 0
+      },
+      "triggerCount": 32,
+      "retriggerCount": 0
+    },
+    {
+      "fileName": "tease-50boards-bet7_00-1758869048504.json",
+      "statistics": {
+        "triggersCount": 31,
+        "totalFreeSpinsAwarded": 15,
+        "retriggersCount": 0,
+        "totalRetriggerSpins": 0
+      },
+      "triggerCount": 31,
+      "retriggerCount": 0
+    },
+    {
+      "fileName": "tease-50boards-bet8_00-1758869051774.json",
+      "statistics": {
+        "triggersCount": 31,
+        "totalFreeSpinsAwarded": 0,
+        "retriggersCount": 0,
+        "totalRetriggerSpins": 0
+      },
+      "triggerCount": 31,
+      "retriggerCount": 0
+    },
+    {
+      "fileName": "tease-50boards-bet9_00-1758869066414.json",
+      "statistics": {
+        "triggersCount": 21,
+        "totalFreeSpinsAwarded": 0,
+        "retriggersCount": 0,
+        "totalRetriggerSpins": 0
+      },
+      "triggerCount": 21,
+      "retriggerCount": 0
+    },
+    {
+      "fileName": "wave-50boards-bet10_00-1758870579592.json",
+      "statistics": {
+        "triggersCount": 26,
+        "totalFreeSpinsAwarded": 15,
+        "retriggersCount": 0,
+        "totalRetriggerSpins": 0
+      },
+      "triggerCount": 26,
+      "retriggerCount": 0
+    },
+    {
+      "fileName": "wave-50boards-bet1_00-1758870524303.json",
+      "statistics": {
+        "triggersCount": 29,
+        "totalFreeSpinsAwarded": 0,
+        "retriggersCount": 0,
+        "totalRetriggerSpins": 0
+      },
+      "triggerCount": 29,
+      "retriggerCount": 0
+    },
+    {
+      "fileName": "wave-50boards-bet2_00-1758870526257.json",
+      "statistics": {
+        "triggersCount": 30,
+        "totalFreeSpinsAwarded": 0,
+        "retriggersCount": 0,
+        "totalRetriggerSpins": 0
+      },
+      "triggerCount": 30,
+      "retriggerCount": 0
+    },
+    {
+      "fileName": "wave-50boards-bet3_00-1758870535583.json",
+      "statistics": {
+        "triggersCount": 27,
+        "totalFreeSpinsAwarded": 0,
+        "retriggersCount": 0,
+        "totalRetriggerSpins": 0
+      },
+      "triggerCount": 27,
+      "retriggerCount": 0
+    },
+    {
+      "fileName": "wave-50boards-bet4_00-1758870542534.json",
+      "statistics": {
+        "triggersCount": 30,
+        "totalFreeSpinsAwarded": 0,
+        "retriggersCount": 0,
+        "totalRetriggerSpins": 0
+      },
+      "triggerCount": 30,
+      "retriggerCount": 0
+    },
+    {
+      "fileName": "wave-50boards-bet5_00-1758870551397.json",
+      "statistics": {
+        "triggersCount": 34,
+        "totalFreeSpinsAwarded": 0,
+        "retriggersCount": 0,
+        "totalRetriggerSpins": 0
+      },
+      "triggerCount": 34,
+      "retriggerCount": 0
+    },
+    {
+      "fileName": "wave-50boards-bet6_00-1758870554398.json",
+      "statistics": {
+        "triggersCount": 29,
+        "totalFreeSpinsAwarded": 0,
+        "retriggersCount": 0,
+        "totalRetriggerSpins": 0
+      },
+      "triggerCount": 29,
+      "retriggerCount": 0
+    },
+    {
+      "fileName": "wave-50boards-bet7_00-1758870559164.json",
+      "statistics": {
+        "triggersCount": 29,
+        "totalFreeSpinsAwarded": 0,
+        "retriggersCount": 0,
+        "totalRetriggerSpins": 0
+      },
+      "triggerCount": 29,
+      "retriggerCount": 0
+    },
+    {
+      "fileName": "wave-50boards-bet8_00-1758870575808.json",
+      "statistics": {
+        "triggersCount": 24,
+        "totalFreeSpinsAwarded": 0,
+        "retriggersCount": 0,
+        "totalRetriggerSpins": 0
+      },
+      "triggerCount": 24,
+      "retriggerCount": 0
+    },
+    {
+      "fileName": "wave-50boards-bet9_00-1758870577686.json",
+      "statistics": {
+        "triggersCount": 27,
+        "totalFreeSpinsAwarded": 15,
+        "retriggersCount": 0,
+        "totalRetriggerSpins": 0
+      },
+      "triggerCount": 27,
+      "retriggerCount": 0
+    },
+    {
+      "fileName": "comeback-75boards-bet10_00-1758871910583.json",
+      "statistics": {
+        "triggersCount": 54,
+        "totalFreeSpinsAwarded": 0,
+        "retriggersCount": 0,
+        "totalRetriggerSpins": 0
+      },
+      "triggerCount": 54,
+      "retriggerCount": 0
+    },
+    {
+      "fileName": "comeback-75boards-bet1_00-1758871804620.json",
+      "statistics": {
+        "triggersCount": 46,
+        "totalFreeSpinsAwarded": 45,
+        "retriggersCount": 0,
+        "totalRetriggerSpins": 0
+      },
+      "triggerCount": 46,
+      "retriggerCount": 0
+    },
+    {
+      "fileName": "comeback-75boards-bet2_00-1758871809647.json",
+      "statistics": {
+        "triggersCount": 48,
+        "totalFreeSpinsAwarded": 15,
+        "retriggersCount": 0,
+        "totalRetriggerSpins": 0
+      },
+      "triggerCount": 48,
+      "retriggerCount": 0
+    },
+    {
+      "fileName": "comeback-75boards-bet3_00-1758871814649.json",
+      "statistics": {
+        "triggersCount": 45,
+        "totalFreeSpinsAwarded": 0,
+        "retriggersCount": 0,
+        "totalRetriggerSpins": 0
+      },
+      "triggerCount": 45,
+      "retriggerCount": 0
+    },
+    {
+      "fileName": "comeback-75boards-bet4_00-1758871817575.json",
+      "statistics": {
+        "triggersCount": 51,
+        "totalFreeSpinsAwarded": 15,
+        "retriggersCount": 0,
+        "totalRetriggerSpins": 0
+      },
+      "triggerCount": 51,
+      "retriggerCount": 0
+    },
+    {
+      "fileName": "comeback-75boards-bet5_00-1758871825155.json",
+      "statistics": {
+        "triggersCount": 51,
+        "totalFreeSpinsAwarded": 15,
+        "retriggersCount": 0,
+        "totalRetriggerSpins": 0
+      },
+      "triggerCount": 51,
+      "retriggerCount": 0
+    },
+    {
+      "fileName": "comeback-75boards-bet6_00-1758871847530.json",
+      "statistics": {
+        "triggersCount": 39,
+        "totalFreeSpinsAwarded": 0,
+        "retriggersCount": 0,
+        "totalRetriggerSpins": 0
+      },
+      "triggerCount": 39,
+      "retriggerCount": 0
+    },
+    {
+      "fileName": "comeback-75boards-bet7_00-1758871867009.json",
+      "statistics": {
+        "triggersCount": 46,
+        "totalFreeSpinsAwarded": 0,
+        "retriggersCount": 0,
+        "totalRetriggerSpins": 0
+      },
+      "triggerCount": 46,
+      "retriggerCount": 0
+    },
+    {
+      "fileName": "comeback-75boards-bet9_00-1758871900317.json",
+      "statistics": {
+        "triggersCount": 42,
+        "totalFreeSpinsAwarded": 45,
+        "retriggersCount": 0,
+        "totalRetriggerSpins": 0
+      },
+      "triggerCount": 42,
+      "retriggerCount": 0
+    },
+    {
+      "fileName": "wave-75boards-bet10_00-1758872144468.json",
+      "statistics": {
+        "triggersCount": 38,
+        "totalFreeSpinsAwarded": 0,
+        "retriggersCount": 0,
+        "totalRetriggerSpins": 0
+      },
+      "triggerCount": 38,
+      "retriggerCount": 0
+    },
+    {
+      "fileName": "wave-75boards-bet1_00-1758872066638.json",
+      "statistics": {
+        "triggersCount": 44,
+        "totalFreeSpinsAwarded": 0,
+        "retriggersCount": 0,
+        "totalRetriggerSpins": 0
+      },
+      "triggerCount": 44,
+      "retriggerCount": 0
+    },
+    {
+      "fileName": "wave-75boards-bet2_00-1758872074667.json",
+      "statistics": {
+        "triggersCount": 51,
+        "totalFreeSpinsAwarded": 30,
+        "retriggersCount": 0,
+        "totalRetriggerSpins": 0
+      },
+      "triggerCount": 51,
+      "retriggerCount": 0
+    },
+    {
+      "fileName": "wave-75boards-bet3_00-1758872079263.json",
+      "statistics": {
+        "triggersCount": 48,
+        "totalFreeSpinsAwarded": 30,
+        "retriggersCount": 0,
+        "totalRetriggerSpins": 0
+      },
+      "triggerCount": 48,
+      "retriggerCount": 0
+    },
+    {
+      "fileName": "wave-75boards-bet4_00-1758872084105.json",
+      "statistics": {
+        "triggersCount": 49,
+        "totalFreeSpinsAwarded": 30,
+        "retriggersCount": 0,
+        "totalRetriggerSpins": 0
+      },
+      "triggerCount": 49,
+      "retriggerCount": 0
+    },
+    {
+      "fileName": "wave-75boards-bet5_00-1758872092773.json",
+      "statistics": {
+        "triggersCount": 38,
+        "totalFreeSpinsAwarded": 0,
+        "retriggersCount": 0,
+        "totalRetriggerSpins": 0
+      },
+      "triggerCount": 38,
+      "retriggerCount": 0
+    },
+    {
+      "fileName": "wave-75boards-bet6_00-1758872105881.json",
+      "statistics": {
+        "triggersCount": 45,
+        "totalFreeSpinsAwarded": 30,
+        "retriggersCount": 0,
+        "totalRetriggerSpins": 0
+      },
+      "triggerCount": 45,
+      "retriggerCount": 0
+    },
+    {
+      "fileName": "wave-75boards-bet7_00-1758872128036.json",
+      "statistics": {
+        "triggersCount": 50,
+        "totalFreeSpinsAwarded": 0,
+        "retriggersCount": 0,
+        "totalRetriggerSpins": 0
+      },
+      "triggerCount": 50,
+      "retriggerCount": 0
+    },
+    {
+      "fileName": "wave-75boards-bet9_00-1758872138280.json",
+      "statistics": {
+        "triggersCount": 53,
+        "totalFreeSpinsAwarded": 30,
+        "retriggersCount": 0,
+        "totalRetriggerSpins": 0
+      },
+      "triggerCount": 53,
+      "retriggerCount": 0
+    }
+  ]
+}

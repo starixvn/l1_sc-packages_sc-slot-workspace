@@ -7,9 +7,9 @@
  */
 
 import { ResultChainOrchestrator } from '../orchestration/result-chain-orchestrator';
-import { BoardGeneratorAdapter } from '../orchestration/board-generator-adapter';
-import { commonDefinition } from '../../generator-definition';
-import { Difficulty } from 'sc-slot-board-generator';
+import { BoardGenerator } from "sc-slot-board-generator";
+import { Volatility } from 'sc-slot-board-generator/lib/volatility';
+import { commonDefinition, boardDefinition } from '../../generator-definition';
 import { writeFileSync, mkdirSync, existsSync } from 'fs';
 import { join } from 'path';
 import { createPatternSpecificBoardGeneratorFactory, getPatternConfigSummary } from '../orchestration/custom-generator-configs';
@@ -217,7 +217,7 @@ async function main() {
                             config: {
                                 boardCount: boardCount,
                                 targetRTP: config.targetRTP,
-                                difficulty: 'medium',
+                                volatility: 'MediumLow',
                                 maxRetries: config.maxRetries,
                                 tolerance: config.tolerance,
                                 betLevel: config.betLevel,
@@ -507,8 +507,8 @@ async function generateChain(patternType: string, boardCount: number, config: Ge
         // 🎭 BOARD GENERATOR (TEMPORARY BYPASS FOR TESTING)
         // ===============================
         
-        // TEMPORARY: Use standard configuration to test critical tumbles fix
-        const boardGeneratorFactory = () => new BoardGeneratorAdapter(
+        // Use BoardGenerator directly
+        const boardGeneratorFactory = () => new BoardGenerator(
             {
                 reels: 6,
                 symbolsOnReel: 5,
@@ -519,11 +519,12 @@ async function generateChain(patternType: string, boardCount: number, config: Ge
                 min: 2,
                 max: 21,
             },
-            Difficulty.Medium
+            boardDefinition,
+            Volatility.MediumLow
         );
         
-        console.log(`🎯 Pattern: ${patternType.toUpperCase()} (using standard config for testing)`);
-        console.log(`📋 Testing: Critical tumbles fix - all boards should have at least 1 tumble`);
+        console.log(`🎯 Pattern: ${patternType.toUpperCase()} (using Volatility.MediumLow)`);
+        console.log(`📋 Board Generator: Using volatility-based configuration`);
         console.log('');
 
         const orchestrator = new ResultChainOrchestrator(boardGeneratorFactory, rtpConfig);
@@ -532,7 +533,7 @@ async function generateChain(patternType: string, boardCount: number, config: Ge
         const chainResult = await orchestrator.generateResultChain({
             boardCount: boardCount,
             targetRTP: config.targetRTP,
-            difficulty: Difficulty.Medium,
+            volatility: Volatility.MediumLow,
             maxRetries: config.maxRetries,
             tolerance: config.tolerance,
             betLevel: config.betLevel,

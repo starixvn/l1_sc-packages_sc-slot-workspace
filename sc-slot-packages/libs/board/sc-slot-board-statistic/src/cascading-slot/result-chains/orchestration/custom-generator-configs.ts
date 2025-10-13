@@ -1,5 +1,6 @@
-import { Difficulty } from "sc-slot-board-generator";
-import { BoardGeneratorAdapter } from './board-generator-adapter';
+import { BoardGenerator } from "sc-slot-board-generator";
+import { Volatility } from 'sc-slot-board-generator/lib/volatility';
+import { boardDefinition } from "../../generator-definition";
 
 // ===============================
 // PATTERN-SPECIFIC CONFIGURATIONS
@@ -19,7 +20,7 @@ export interface PatternBoardConfig {
         min: number;
         max: number;
     };
-    difficulty: Difficulty;
+    volatility: Volatility;
 }
 
 // ===============================
@@ -42,7 +43,7 @@ export const PATTERN_CONFIGS: { [key: string]: PatternBoardConfig } = {
             min: 1,   // Lower minimum for accessible wins
             max: 18,  // Lower maximum for less volatility
         },
-        difficulty: Difficulty.Easy, // More frequent wins
+        volatility: Volatility.MediumLow, // More frequent wins
     },
 
     // CLIFFHANGER - Risk-seekers want high suspense and big potential payouts  
@@ -60,7 +61,7 @@ export const PATTERN_CONFIGS: { [key: string]: PatternBoardConfig } = {
             min: 3,   // Higher minimum for bigger baseline wins
             max: 50,  // Much higher maximum for excitement
         },
-        difficulty: Difficulty.Hard, // Fewer but bigger wins
+        volatility: Volatility.VeryHigh, // Fewer but bigger wins
     },
 
     // DISCOVERY - Explorers want variety and gradual feature reveals
@@ -78,7 +79,7 @@ export const PATTERN_CONFIGS: { [key: string]: PatternBoardConfig } = {
             min: 2,   // Standard minimum
             max: 30,  // Higher maximum for discovery rewards
         },
-        difficulty: Difficulty.Medium, // Balanced for exploration
+        volatility: Volatility.MediumLow, // Balanced for exploration
         // Note: This pattern would benefit from enhanced scatter distribution
     },
 
@@ -97,7 +98,7 @@ export const PATTERN_CONFIGS: { [key: string]: PatternBoardConfig } = {
             min: 2,   // Standard minimum
             max: 25,  // Standard maximum
         },
-        difficulty: Difficulty.Medium, // Balanced approach
+        volatility: Volatility.MediumLow, // Balanced approach
     },
 
     // WAVE - Mixed players want rhythmic, consistent engagement
@@ -115,7 +116,7 @@ export const PATTERN_CONFIGS: { [key: string]: PatternBoardConfig } = {
             min: 2,   // Standard minimum  
             max: 21,  // Standard maximum (current default)
         },
-        difficulty: Difficulty.Medium, // Balanced volatility
+        volatility: Volatility.MediumLow, // Balanced volatility
     }
 };
 
@@ -129,10 +130,11 @@ export function createPatternSpecificBoardGeneratorFactory(patternType: string) 
     if (!config) {
         console.warn(`⚠️ Pattern '${patternType}' not found in configurations. Using default settings.`);
         // Fallback to standard configuration
-        return () => new BoardGeneratorAdapter(
+        return () => new BoardGenerator(
             { reels: 6, symbolsOnReel: 5, numberOfSymbols: 11, numberOfShuffles: 3 },
             { min: 2, max: 21 },
-            Difficulty.Medium
+            boardDefinition,
+            Volatility.MediumLow
         );
     }
     
@@ -141,16 +143,15 @@ export function createPatternSpecificBoardGeneratorFactory(patternType: string) 
     console.log(`   Description: ${config.description}`);
     console.log(`   Grid Size: ${config.boardSettings.reels}x${config.boardSettings.symbolsOnReel}`);
     console.log(`   Multiplier Range: ${config.multiplierSettings.min}x-${config.multiplierSettings.max}x`);
-    const difficultyNames = ['Trial', 'Easy', 'Medium', 'Hard'];
-    console.log(`   Difficulty: ${difficultyNames[config.difficulty] || 'Unknown'}`);
-    console.log(`   Hit Frequency: ${config.difficulty === 1 ? '~35%' : 
-                                      config.difficulty === 2 ? '~30%' : '~25%'}`);
+    console.log(`   Volatility: ${config.volatility}`);
+    console.log(`   Hit Frequency: ${config.volatility === Volatility.MediumLow ? '~30%' : '~20%'}`);
     
-    return () => new BoardGeneratorAdapter(
-        config.boardSettings,
-        config.multiplierSettings,
-        config.difficulty
-    );
+        return () => new BoardGenerator(
+            config.boardSettings,
+            config.multiplierSettings,
+            boardDefinition,
+            config.volatility
+        );
 }
 
 // ===============================

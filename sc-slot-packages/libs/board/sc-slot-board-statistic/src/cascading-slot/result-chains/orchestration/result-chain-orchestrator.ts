@@ -5,7 +5,7 @@ import { prop } from "ramda";
 import { RTPController, RTPConfiguration, RTPResult, BoardResult } from "./rtp-controller";
 import { Round } from "../../statistic-calculator";
 import { commonDefinition, defaultOdds } from "../../generator-definition";
-import { Difficulty } from "sc-slot-board-generator";
+import { Volatility } from 'sc-slot-board-generator/lib/volatility';
 import { ChainValidator } from "../validation/chain-validator";
 import { BoardEnhancementOrchestrator } from "../win-booster/board-enhancement-orchestrator";
 
@@ -14,7 +14,7 @@ import { BoardEnhancementOrchestrator } from "../win-booster/board-enhancement-o
 export interface ResultChainConfig {
     boardCount: number; // Number of boards in chain (100-150)
     targetRTP: number; // Target RTP (0.97 = 97%)
-    difficulty: Difficulty; // Game difficulty
+    volatility: Volatility; // Game volatility
     maxRetries: number; // Max attempts to generate valid chain
     tolerance: number; // RTP tolerance (±%)
     betLevel?: number; // Bet level multiplier (0.1-10.0, default: 0.5)
@@ -49,7 +49,6 @@ export interface BoardGeneratorInterface {
         explodedSymbols?: number[];
         newSymbols?: number[];
     };
-    getUnderlyingGenerator(): any; // For external calculator integration
 }
 
 export class ResultChainOrchestrator {
@@ -1160,7 +1159,7 @@ export class ResultChainOrchestrator {
         const testConfig: ResultChainConfig = {
             boardCount: Math.min(Math.max(rounds, 10), 20),
             targetRTP: 0.97,
-            difficulty: Difficulty.Easy,
+            volatility: Volatility.MediumLow,
             maxRetries: 3,
             tolerance: 0.1, // More lenient for small batches
             betLevel: 0.5,
