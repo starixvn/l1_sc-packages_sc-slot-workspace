@@ -1,8 +1,4 @@
-// Define volatility enum locally since it's not exported from sc-slot-board-generator
-enum Volatility {
-  MediumLow = 'MediumLow',
-  VeryHigh = 'VeryHigh'
-}
+import { Volatility } from 'sc-slot-board-generator/lib/volatility';
 
 export const commonDefinition = {
   multiplier: {
