@@ -1,6 +1,7 @@
 import { SymbolPrioritizer, SymbolPriorityResult } from './symbol-prioritizer';
 import { MultiSymbolStrategy, MultiSymbolResult } from './multi-symbol-strategy';
 import { EnhancedBoardAnalyzer, EnhancedBoardAnalysis } from './enhanced-board-analyzer';
+import { EngagementMechanics } from '../orchestration/custom-generator-configs';
 
 export interface EnhancementRequest {
     board: number[];
@@ -38,7 +39,7 @@ export class BoardEnhancementOrchestrator {
     private readonly multiSymbolStrategy: MultiSymbolStrategy;
     private readonly boardAnalyzer: EnhancedBoardAnalyzer;
 
-    constructor() {
+    constructor(private engagementMechanics?: EngagementMechanics) {
         this.symbolPrioritizer = new SymbolPrioritizer();
         this.multiSymbolStrategy = new MultiSymbolStrategy();
         this.boardAnalyzer = new EnhancedBoardAnalyzer();
@@ -51,17 +52,47 @@ export class BoardEnhancementOrchestrator {
         const startTime = Date.now();
         const maxTime = request.maxEnhancementTime || 10000; // 10 second default
         
+        // Apply engagement mechanics transformations before analysis
+        let board = [...request.board];
+        let multipliers = [...request.multipliers];
+        
+        if (this.engagementMechanics) {
+            // Apply scatter boost (Discovery pattern - free spin focus)
+            if (this.engagementMechanics.scatterBoost) {
+                const result = this.enhanceScatters(board, multipliers, this.engagementMechanics.scatterBoost);
+                board = result.board;
+                multipliers = result.multipliers;
+            }
+            
+            // Apply premium symbol boost (Cliffhanger pattern - high-value wins)
+            if (this.engagementMechanics.premiumSymbolBoost && request.targetWin > 0) {
+                const result = this.boostPremiumSymbols(board, multipliers, this.engagementMechanics.premiumSymbolBoost);
+                board = result.board;
+                multipliers = result.multipliers;
+            }
+            
+            // Apply multi-cascade setup (patterns targeting 3-4+ tumbles)
+            if (this.engagementMechanics.cascadeTarget && request.targetWin > 0) {
+                const result = this.setupMultiCascade(board, multipliers, this.engagementMechanics.cascadeTarget, request.targetWin);
+                board = result.board;
+                multipliers = result.multipliers;
+            }
+        }
+        
+        // Update request with enhanced board
+        const enhancedRequest = { ...request, board, multipliers };
+        
         // Step 1: Analyze current board state
-        const boardAnalysis = this.boardAnalyzer.analyzeBoard(request.board);
+        const boardAnalysis = this.boardAnalyzer.analyzeBoard(enhancedRequest.board);
         
         // Early exit if board already has winning symbols
         if (boardAnalysis.winningSymbols.length > 0) {
-            return this.createNoEnhancementResult(request, boardAnalysis, startTime, 'Board already has winning symbols');
+            return this.createNoEnhancementResult(enhancedRequest, boardAnalysis, startTime, 'Board already has winning symbols');
         }
 
         // Step 2: Calculate target multiplier and board multiplier sum
-        const targetMultiplier = request.targetWin / request.totalBetAmount;
-        const boardMultiplierSum = request.multipliers.reduce((sum, mult) => sum + mult, 0);
+        const targetMultiplier = enhancedRequest.targetWin / enhancedRequest.totalBetAmount;
+        const boardMultiplierSum = enhancedRequest.multipliers.reduce((sum, mult) => sum + mult, 0);
         
         // Step 3: Prioritize symbols
         const symbolPriority = this.symbolPrioritizer.prioritizeSymbols(
@@ -72,7 +103,7 @@ export class BoardEnhancementOrchestrator {
 
         // Step 4: Check timeout
         if (Date.now() - startTime > maxTime) {
-            return this.createTimeoutResult(request, boardAnalysis, symbolPriority, startTime);
+            return this.createTimeoutResult(enhancedRequest, boardAnalysis, symbolPriority, startTime);
         }
 
         // Step 5: Determine enhancement strategy
@@ -81,7 +112,7 @@ export class BoardEnhancementOrchestrator {
         switch (symbolPriority.recommendedStrategy) {
             case 'single-symbol':
                 enhancementResult = await this.applySingleSymbolStrategy(
-                    request, 
+                    enhancedRequest, 
                     boardAnalysis, 
                     symbolPriority, 
                     startTime, 
@@ -91,7 +122,7 @@ export class BoardEnhancementOrchestrator {
 
             case 'multi-symbol':
                 enhancementResult = await this.applyMultiSymbolStrategy(
-                    request, 
+                    enhancedRequest, 
                     boardAnalysis, 
                     symbolPriority, 
                     startTime, 
@@ -119,7 +150,7 @@ export class BoardEnhancementOrchestrator {
 
             default:
                 enhancementResult = this.createNoEnhancementResult(
-                    request, 
+                    enhancedRequest, 
                     boardAnalysis, 
                     startTime, 
                     'No suitable enhancement strategy found'
@@ -456,6 +487,214 @@ export class BoardEnhancementOrchestrator {
         }
 
         return positions.slice(0, count);
+    }
+
+    /**
+     * Enhance scatter symbols (symbol 9) for increased free spin triggers
+     * Used by Discovery pattern
+     */
+    private enhanceScatters(
+        board: number[], 
+        multipliers: number[], 
+        scatterBoost: number
+    ): { board: number[], multipliers: number[] } {
+        const currentScatterCount = board.filter(s => s === 9).length;
+        const targetScatterCount = Math.floor(currentScatterCount * scatterBoost);
+        const needed = targetScatterCount - currentScatterCount;
+        
+        if (needed <= 0) return { board: [...board], multipliers: [...multipliers] };
+        
+        const newBoard = [...board];
+        const lowValuePositions = board
+            .map((symbol, idx) => ({ symbol, idx }))
+            .filter(({ symbol }) => symbol >= 0 && symbol <= 3)
+            .map(({ idx }) => idx);
+        
+        // Replace low-value symbols with scatters
+        for (let i = 0; i < Math.min(needed, lowValuePositions.length); i++) {
+            newBoard[lowValuePositions[i]] = 9;
+        }
+        
+        return { board: newBoard, multipliers: [...multipliers] };
+    }
+
+    /**
+     * Setup multi-cascade boards by placing multiple winning symbol types
+     * Used for patterns that target 3-4+ tumble cascades
+     * This creates boards with multiple symbol types that will cascade in sequence
+     */
+    private setupMultiCascade(
+        board: number[],
+        multipliers: number[],
+        cascadeTarget: number,
+        targetWin: number
+    ): { board: number[], multipliers: number[] } {
+        // For multi-cascade, we want to place multiple symbol types with 8+ counts
+        // Each symbol type will create one tumble cascade
+        const symbolTypesNeeded = Math.min(Math.ceil(cascadeTarget), 3); // Cap at 3 types for realism
+        
+        const newBoard = [...board];
+        const symbolsToPlace: number[] = [];
+        
+        // Select symbols based on target win size
+        // Higher target wins use higher-value symbols
+        const baseBetAmount = targetWin / 20; // Estimate base bet
+        if (targetWin > baseBetAmount * 100) {
+            // Big win - use premium symbols
+            symbolsToPlace.push(7, 6, 5);
+        } else if (targetWin > baseBetAmount * 50) {
+            // Medium-high win
+            symbolsToPlace.push(6, 5, 4);
+        } else {
+            // Standard win - use mid-range symbols
+            symbolsToPlace.push(5, 4, 3);
+        }
+        
+        // Place symbols evenly across the board
+        // Each symbol type gets 8-10 positions for guaranteed win
+        const emptyPositions = newBoard
+            .map((symbol, idx) => ({ symbol, idx }))
+            .filter(({ symbol }) => symbol >= 0 && symbol <= 4) // Replace low symbols
+            .map(({ idx }) => idx);
+        
+        let positionIndex = 0;
+        for (let i = 0; i < symbolTypesNeeded && i < symbolsToPlace.length; i++) {
+            const symbolToPlace = symbolsToPlace[i];
+            const positionsNeeded = 8 + Math.floor(Math.random() * 3); // 8-10 symbols
+            
+            for (let j = 0; j < positionsNeeded && positionIndex < emptyPositions.length; j++, positionIndex++) {
+                newBoard[emptyPositions[positionIndex]] = symbolToPlace;
+            }
+        }
+        
+        return { board: newBoard, multipliers: [...multipliers] };
+    }
+
+    /**
+     * Intelligent symbol boost system that adapts to board state and win targets
+     * Strategy selection based on multipliers and target win:
+     * - Has multipliers: boost medium symbols (5, 6) - multipliers amplify wins
+     * - No multipliers + high target: boost premium symbols (7, 8) - need raw power
+     * - Very high target: prioritize symbol 8 (200x-1000x) over symbol 7 (50x-500x)
+     */
+    private boostPremiumSymbols(
+        board: number[],
+        multipliers: number[],
+        premiumBoost: number
+    ): { board: number[], multipliers: number[] } {
+        // Analyze board state
+        const hasMultipliers = multipliers.length > 0 && multipliers.reduce((sum, m) => sum + m, 0) > 0;
+        const multiplierSum = hasMultipliers ? multipliers.reduce((sum, m) => sum + m, 0) : 1;
+        
+        // Determine boost strategy based on board state
+        const strategy = this.determineBoostStrategy(hasMultipliers, multiplierSum, premiumBoost);
+        
+        // Calculate how many symbols to boost (increase base count for noticeable effect)
+        const baseBoostCount = Math.max(3, Math.floor(board.length * 0.15)); // At least 3-5 symbols
+        const targetCount = Math.floor(baseBoostCount * premiumBoost);
+        
+        const newBoard = [...board];
+        let replaced = 0;
+        
+        // Find positions to replace (prioritize low-value symbols)
+        const replaceablePositions = board
+            .map((symbol, idx) => ({ symbol, idx }))
+            .filter(({ symbol }) => symbol >= 0 && symbol <= 4) // Only replace low symbols
+            .sort((a, b) => a.symbol - b.symbol) // Replace lowest symbols first
+            .map(({ idx }) => idx);
+        
+        // Apply boost strategy
+        for (let i = 0; i < Math.min(targetCount, replaceablePositions.length); i++) {
+            const position = replaceablePositions[i];
+            newBoard[position] = this.selectBoostSymbol(strategy);
+            replaced++;
+        }
+        
+        if (replaced > 0) {
+            console.log(`🎯 Symbol Boost: ${strategy.name} - Replaced ${replaced} symbols`);
+            console.log(`   Strategy: ${strategy.description}`);
+            console.log(`   Symbols used: ${strategy.symbols.join(', ')}`);
+            console.log(`   Multiplier context: ${hasMultipliers ? `${multiplierSum}x board multiplier` : 'No multipliers'}`);
+        }
+        
+        return { board: newBoard, multipliers: [...multipliers] };
+    }
+
+    /**
+     * Determine optimal boost strategy based on board context
+     */
+    private determineBoostStrategy(
+        hasMultipliers: boolean,
+        multiplierSum: number,
+        premiumBoost: number
+    ): {
+        name: string;
+        description: string;
+        symbols: number[];
+        weights: { [symbol: number]: number };
+    } {
+        // Strategy 1: Has multipliers → boost medium symbols (5, 6)
+        // Rationale: Multipliers will amplify the win, don't need ultra-premium
+        if (hasMultipliers && multiplierSum >= 10) {
+            return {
+                name: 'Medium-High Boost (Multiplier Amplification)',
+                description: 'Board has significant multipliers - boosting medium symbols (5:30x, 6:40x) for amplified wins',
+                symbols: [5, 6],
+                weights: { 5: 0.5, 6: 0.5 } // Equal mix of symbols 5 and 6
+            };
+        }
+        
+        // Strategy 2: Low multipliers → boost upper-medium symbols (6, 7)
+        // Rationale: Some multiplier help but need better base odds
+        if (hasMultipliers && multiplierSum < 10) {
+            return {
+                name: 'Upper-Medium Boost (Balanced Approach)',
+                description: 'Low multipliers - boosting symbols 6-7 for balanced wins',
+                symbols: [6, 7],
+                weights: { 6: 0.6, 7: 0.4 } // Favor symbol 6 slightly
+            };
+        }
+        
+        // Strategy 3: No multipliers + extreme boost → ultra-premium (symbol 8)
+        // Rationale: Need maximum raw power without multiplier help
+        if (!hasMultipliers && premiumBoost >= 2.0) {
+            return {
+                name: 'Ultra-Premium Boost (Raw Power)',
+                description: 'No multipliers + high boost - prioritizing symbol 8 (200x-1000x base odds)',
+                symbols: [7, 8],
+                weights: { 7: 0.3, 8: 0.7 } // Heavy emphasis on symbol 8
+            };
+        }
+        
+        // Strategy 4: No multipliers + standard boost → premium mix (symbols 7, 8)
+        // Rationale: Need good base odds, balanced approach
+        return {
+            name: 'Premium Boost (Standard)',
+            description: 'No multipliers - boosting premium symbols (7:50x, 8:200x) for strong base wins',
+            symbols: [7, 8],
+            weights: { 7: 0.6, 8: 0.4 } // Favor symbol 7 (more accessible)
+        };
+    }
+
+    /**
+     * Select symbol based on strategy weights
+     */
+    private selectBoostSymbol(strategy: {
+        symbols: number[];
+        weights: { [symbol: number]: number };
+    }): number {
+        const random = Math.random();
+        let cumulative = 0;
+        
+        for (const symbol of strategy.symbols) {
+            cumulative += strategy.weights[symbol];
+            if (random <= cumulative) {
+                return symbol;
+            }
+        }
+        
+        // Fallback to last symbol
+        return strategy.symbols[strategy.symbols.length - 1];
     }
 
     /**
