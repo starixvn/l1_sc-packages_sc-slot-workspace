@@ -504,38 +504,44 @@ async function generateChain(patternType: string, boardCount: number, config: Ge
         };
 
         // ===============================
-        // 🎭 BOARD GENERATOR (TEMPORARY BYPASS FOR TESTING)
+        // 🎭 PATTERN-SPECIFIC BOARD GENERATOR
         // ===============================
         
-        // Use BoardGenerator directly
-        const boardGeneratorFactory = () => new BoardGenerator(
-            {
-                reels: 6,
-                symbolsOnReel: 5,
-                numberOfSymbols: 11,
-                numberOfShuffles: 3,
-            },
-            {
-                min: 2,
-                max: 21,
-            },
-            boardDefinition,
-            Volatility.MediumLow
-        );
+        // Get pattern-specific generator and engagement mechanics
+        const { generatorFactory, engagementMechanics } = createPatternSpecificBoardGeneratorFactory(patternType);
         
-        console.log(`🎯 Pattern: ${patternType.toUpperCase()} (using Volatility.MediumLow)`);
-        console.log(`📋 Board Generator: Using volatility-based configuration`);
+        // Use custom RTP from engagement mechanics or fall back to config default
+        const targetRTP = engagementMechanics?.targetRTP || config.targetRTP;
+        const tolerance = engagementMechanics?.rtpTolerance || config.tolerance;
+        
+        // Update RTP configuration with pattern-specific values
+        const patternRtpConfig = {
+            ...rtpConfig,
+            targetRTP,
+            tolerance,
+        };
+        
+        console.log(`🎯 Pattern: ${patternType.toUpperCase()}`);
+        console.log(`📋 RTP Config: Target ${(targetRTP * 100).toFixed(1)}% ± ${(tolerance * 100).toFixed(1)}%`);
+        if (engagementMechanics) {
+            if (engagementMechanics.targetHitFrequency) {
+                console.log(`   Hit Frequency Target: ${(engagementMechanics.targetHitFrequency * 100).toFixed(0)}%`);
+            }
+            if (engagementMechanics.cascadeTarget) {
+                console.log(`   Cascade Target: ${engagementMechanics.cascadeTarget} tumbles`);
+            }
+        }
         console.log('');
 
-        const orchestrator = new ResultChainOrchestrator(boardGeneratorFactory, rtpConfig);
+        const orchestrator = new ResultChainOrchestrator(generatorFactory, patternRtpConfig, engagementMechanics);
 
-        // Generate result chain with correct parameters
+        // Generate result chain with pattern-specific parameters
         const chainResult = await orchestrator.generateResultChain({
             boardCount: boardCount,
-            targetRTP: config.targetRTP,
+            targetRTP: targetRTP,  // Use pattern-specific RTP
             volatility: Volatility.MediumLow,
             maxRetries: config.maxRetries,
-            tolerance: config.tolerance,
+            tolerance: tolerance,  // Use pattern-specific tolerance
             betLevel: config.betLevel,
             coinValue: config.coinValue
         });
@@ -587,8 +593,8 @@ async function generateChain(patternType: string, boardCount: number, config: Ge
         });
 
         const actualRTP = totalWagered > 0 ? totalWon / totalWagered : 0;
-        const rtpVariance = Math.abs(actualRTP - config.targetRTP);
-        const meetsTarget = rtpVariance <= config.tolerance;
+        const rtpVariance = Math.abs(actualRTP - targetRTP);  // Use pattern-specific RTP
+        const meetsTarget = rtpVariance <= tolerance;  // Use pattern-specific tolerance
 
         // Build comprehensive result
         return {

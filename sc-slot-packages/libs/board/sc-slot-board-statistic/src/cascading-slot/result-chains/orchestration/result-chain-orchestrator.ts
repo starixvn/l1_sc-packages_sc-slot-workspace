@@ -8,6 +8,7 @@ import { commonDefinition, defaultOdds } from "../../generator-definition";
 import { Volatility } from 'sc-slot-board-generator/lib/volatility';
 import { ChainValidator } from "../validation/chain-validator";
 import { BoardEnhancementOrchestrator } from "../win-booster/board-enhancement-orchestrator";
+import { EngagementMechanics } from "./custom-generator-configs";
 
 // Import board generator from the other package
 // Note: This will require adding sc-slot-board-generator as dependency
@@ -58,10 +59,11 @@ export class ResultChainOrchestrator {
 
     constructor(
         private boardGeneratorFactory: () => BoardGeneratorInterface,
-        rtpConfig: RTPConfiguration
+        rtpConfig: RTPConfiguration,
+        private engagementMechanics?: EngagementMechanics
     ) {
         this.rtpController = new RTPController(rtpConfig);
-        this.enhancementOrchestrator = new BoardEnhancementOrchestrator();
+        this.enhancementOrchestrator = new BoardEnhancementOrchestrator(engagementMechanics);
     }
 
     /**

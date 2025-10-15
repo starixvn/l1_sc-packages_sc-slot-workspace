@@ -15,6 +15,7 @@
     "test-simple": "node --experimental-specifier-resolution=node --loader ts-node/esm tests/test-patterns-simple.ts",
     "collect-multipliers": "node --experimental-specifier-resolution=node --loader ts-node/esm src/cascading-slot/analyzers/multiplier-collector.ts",
     "verify-chain-multipliers": "node --experimental-specifier-resolution=node --loader ts-node/esm src/cascading-slot/result-chains/scripts/verify-chain-multipliers.ts",
+    "analyze-chain-symbols": "node --experimental-specifier-resolution=node --loader ts-node/esm src/cascading-slot/result-chains/scripts/analyze-chain-symbols.ts",
     "lint": "eslint src/**/*.ts",
     "lint:fix": "eslint src/**/*.ts --fix",
     "clean": "rimraf dist",

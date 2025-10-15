@@ -3,6 +3,20 @@ import { Volatility } from 'sc-slot-board-generator/lib/volatility';
 import { boardDefinition } from "../../generator-definition";
 
 // ===============================
+// ENGAGEMENT MECHANICS
+// ===============================
+
+export interface EngagementMechanics {
+    targetRTP?: number;                // Custom RTP target (e.g., 0.96, 1.10)
+    rtpTolerance?: number;             // Custom RTP tolerance (e.g., 0.02 for ±2%)
+    targetHitFrequency?: number;       // 0.0-1.0 (e.g., 0.50 for 50%)
+    premiumSymbolBoost?: number;       // Multiplier for symbols 7-8 weight (e.g., 1.8)
+    scatterBoost?: number;             // Multiplier for symbol 9 weight (e.g., 2.5)
+    cascadeTarget?: number;            // Target tumble count (e.g., 3-4)
+    nearMissMode?: boolean;            // Enable 6-7 symbol placement
+}
+
+// ===============================
 // PATTERN-SPECIFIC CONFIGURATIONS
 // ===============================
 
@@ -21,6 +35,7 @@ export interface PatternBoardConfig {
         max: number;
     };
     volatility: Volatility;
+    engagementMechanics?: EngagementMechanics;
 }
 
 // ===============================
@@ -31,56 +46,73 @@ export const PATTERN_CONFIGS: { [key: string]: PatternBoardConfig } = {
     // COMEBACK - Loss-averse players need frequent small wins to build confidence
     comeback: {
         name: "Comeback Pattern",
-        description: "Recovery pattern with frequent small wins for loss-averse players",
+        description: "High-frequency recovery with standard RTP and 2-3 tumble cascades",
         riskProfile: 'loss-averse',
         boardSettings: {
             reels: 6,
             symbolsOnReel: 5,
             numberOfSymbols: 11,
-            numberOfShuffles: 2, // Less randomization for more predictable patterns
+            numberOfShuffles: 3,
         },
         multiplierSettings: {
             min: 1,   // Lower minimum for accessible wins
             max: 18,  // Lower maximum for less volatility
         },
-        volatility: Volatility.MediumLow, // More frequent wins
+        volatility: Volatility.MediumLow,
+        engagementMechanics: {
+            targetRTP: 0.97,              // Standard 97% RTP
+            rtpTolerance: 0.01,           // ±1%
+            targetHitFrequency: 0.50,     // 50% win rate target
+            cascadeTarget: 2.5,           // 2-3 tumbles average
+        },
     },
 
     // CLIFFHANGER - Risk-seekers want high suspense and big potential payouts  
     cliffhanger: {
         name: "Cliffhanger Pattern",
-        description: "High-suspense pattern with big win potential for risk-seekers",
+        description: "High-risk high-reward with elevated RTP ceiling and premium symbols",
         riskProfile: 'risk-seeker',
         boardSettings: {
             reels: 6,
             symbolsOnReel: 5,
             numberOfSymbols: 11,
-            numberOfShuffles: 4, // More randomization for unpredictability
+            numberOfShuffles: 3,
         },
         multiplierSettings: {
-            min: 3,   // Higher minimum for bigger baseline wins
-            max: 50,  // Much higher maximum for excitement
+            min: 5,    // Higher minimum for bigger baseline wins
+            max: 100,  // Increased maximum for mega wins
         },
-        volatility: Volatility.VeryHigh, // Fewer but bigger wins
+        volatility: Volatility.VeryHigh,
+        engagementMechanics: {
+            targetRTP: 1.05,              // Allow 105% RTP (can go up to 110%)
+            rtpTolerance: 0.05,           // ±5% (allows 100%-110% range)
+            premiumSymbolBoost: 1.8,      // 80% more symbols 7-8
+            cascadeTarget: 4,             // 4-5 tumbles when winning
+        },
     },
 
     // DISCOVERY - Explorers want variety and gradual feature reveals
     discovery: {
         name: "Discovery Pattern", 
-        description: "Exploration pattern with enhanced features for curious players",
+        description: "Feature-rich with lower base RTP compensated by 2.5x more free spins",
         riskProfile: 'explorer',
         boardSettings: {
             reels: 6,
             symbolsOnReel: 5,
             numberOfSymbols: 11,
-            numberOfShuffles: 3, // Standard randomization
+            numberOfShuffles: 3,
         },
         multiplierSettings: {
             min: 2,   // Standard minimum
             max: 30,  // Higher maximum for discovery rewards
         },
-        volatility: Volatility.MediumLow, // Balanced for exploration
-        // Note: This pattern would benefit from enhanced scatter distribution
+        volatility: Volatility.MediumLow,
+        engagementMechanics: {
+            targetRTP: 0.96,              // Lower 96% RTP
+            rtpTolerance: 0.01,           // ±1%
+            scatterBoost: 2.5,            // 2.5x scatter frequency compensates
+            cascadeTarget: 3.5,           // 3-4 tumbles average
+        },
     },
 
     // TEASE - Mixed players want balanced anticipation
@@ -121,6 +153,35 @@ export const PATTERN_CONFIGS: { [key: string]: PatternBoardConfig } = {
 };
 
 // ===============================
+// PATTERN CONFIG LOGGER (BUILDER PATTERN)
+// ===============================
+
+class PatternConfigLogger {
+    private lines: string[] = [];
+
+    header(icon: string, label: string, value: string): this {
+        this.lines.push(`${icon} ${label}: ${value}`);
+        return this;
+    }
+
+    detail(label: string, value: string | number): this {
+        this.lines.push(`   ${label}: ${value}`);
+        return this;
+    }
+
+    detailIf(condition: boolean | undefined, label: string, value: string | number): this {
+        if (condition) {
+            this.detail(label, value);
+        }
+        return this;
+    }
+
+    build(): void {
+        this.lines.forEach(line => console.log(line));
+    }
+}
+
+// ===============================
 // PATTERN-AWARE FACTORY FUNCTION
 // ===============================
 
@@ -130,28 +191,43 @@ export function createPatternSpecificBoardGeneratorFactory(patternType: string) 
     if (!config) {
         console.warn(`⚠️ Pattern '${patternType}' not found in configurations. Using default settings.`);
         // Fallback to standard configuration
-        return () => new BoardGenerator(
-            { reels: 6, symbolsOnReel: 5, numberOfSymbols: 11, numberOfShuffles: 3 },
-            { min: 2, max: 21 },
-            boardDefinition,
-            Volatility.MediumLow
-        );
+        return {
+            generatorFactory: () => new BoardGenerator(
+                { reels: 6, symbolsOnReel: 5, numberOfSymbols: 11, numberOfShuffles: 3 },
+                { min: 2, max: 21 },
+                boardDefinition,
+                Volatility.MediumLow
+            ),
+            engagementMechanics: undefined
+        };
     }
     
-    console.log(`🎭 Using pattern-specific configuration: ${config.name}`);
-    console.log(`   Risk Profile: ${config.riskProfile}`);
-    console.log(`   Description: ${config.description}`);
-    console.log(`   Grid Size: ${config.boardSettings.reels}x${config.boardSettings.symbolsOnReel}`);
-    console.log(`   Multiplier Range: ${config.multiplierSettings.min}x-${config.multiplierSettings.max}x`);
-    console.log(`   Volatility: ${config.volatility}`);
-    console.log(`   Hit Frequency: ${config.volatility === Volatility.MediumLow ? '~30%' : '~20%'}`);
+    const logger = new PatternConfigLogger();
+    const mechanics = config.engagementMechanics;
     
-        return () => new BoardGenerator(
+    logger
+        .header('🎭', 'Using pattern-specific configuration', config.name)
+        .detail('Risk Profile', config.riskProfile)
+        .detail('Description', config.description)
+        .detail('Grid Size', `${config.boardSettings.reels}x${config.boardSettings.symbolsOnReel}`)
+        .detail('Multiplier Range', `${config.multiplierSettings.min}x-${config.multiplierSettings.max}x`)
+        .detail('Volatility', config.volatility)
+        .detailIf(!!mechanics, 'RTP Target', `${((mechanics?.targetRTP || 0.97) * 100).toFixed(0)}%`)
+        .detailIf(!!mechanics?.targetHitFrequency, 'Hit Frequency Target', `${((mechanics?.targetHitFrequency || 0) * 100).toFixed(0)}%`)
+        .detailIf(!!mechanics?.cascadeTarget, 'Cascade Target', `${mechanics?.cascadeTarget} tumbles`)
+        .detailIf(!!mechanics?.premiumSymbolBoost, 'Premium Symbol Boost', `${mechanics?.premiumSymbolBoost}x`)
+        .detailIf(!!mechanics?.scatterBoost, 'Scatter Boost', `${mechanics?.scatterBoost}x`)
+        .build();
+    
+    return {
+        generatorFactory: () => new BoardGenerator(
             config.boardSettings,
             config.multiplierSettings,
             boardDefinition,
             config.volatility
-        );
+        ),
+        engagementMechanics: config.engagementMechanics
+    };
 }
 
 // ===============================
