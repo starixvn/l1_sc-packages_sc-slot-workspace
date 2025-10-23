@@ -13,6 +13,7 @@ export interface CreateResultChainStatisticsInput {
 
 export interface ResultChainStatisticsFilter {
     patternType?: string;
+    volatility?: string; // Add volatility filter
     status?: 'active' | 'archived' | 'testing';
     boardCountMin?: number;
     boardCountMax?: number;
@@ -55,6 +56,7 @@ export class ResultChainStatisticsRepository {
                 generationStats: (resultChain as any).generationStats || {},
                 betLevel: (resultChain as any).metadata?.betData?.betLevel || 0.5,
                 coinValue: (resultChain as any).metadata?.betData?.coinValue || 0.1,
+                volatility: (resultChain as any).volatility, // Add volatility field
                 status,
                 createdBy,
                 // Add multiplier statistics
@@ -114,6 +116,10 @@ export class ResultChainStatisticsRepository {
             // Build query conditions
             if (filter.patternType) {
                 query.patternType = filter.patternType;
+            }
+            
+            if (filter.volatility) {
+                query.volatility = filter.volatility;
             }
 
             if (filter.status) {

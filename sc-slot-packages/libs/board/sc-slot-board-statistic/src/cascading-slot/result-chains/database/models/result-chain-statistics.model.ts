@@ -19,6 +19,7 @@ export interface IResultChainStatistics extends Document {
     createdBy?: string;
     betLevel: number;
     coinValue: number;
+    volatility?: string; // Game volatility: Low, MediumLow, Medium, High, VeryHigh
     // Multiplier statistics for analysis
     totalWonWithMultipliers?: number;     // Total wins including multiplier effects
     totalWonWithoutMultipliers?: number;  // Total wins before multiplier effects
@@ -144,6 +145,11 @@ const ResultChainStatisticsSchema = new Schema<IResultChainStatistics>({
         default: 0.1,
         index: true
     },
+    volatility: {
+        type: String,
+        enum: ['Low', 'MediumLow', 'Medium', 'High', 'VeryHigh'],
+        index: true
+    },
     // Multiplier statistics for analysis
     totalWonWithMultipliers: {
         type: Number,
@@ -179,6 +185,7 @@ ResultChainStatisticsSchema.index({ patternType: 1, actualRTP: -1 });
 ResultChainStatisticsSchema.index({ status: 1, createdAt: -1 });
 ResultChainStatisticsSchema.index({ boardCount: 1, targetRTP: 1 });
 ResultChainStatisticsSchema.index({ betLevel: 1, coinValue: 1 }); // Bet parameters index
+ResultChainStatisticsSchema.index({ volatility: 1, patternType: 1 }); // Volatility + pattern index
 ResultChainStatisticsSchema.index({ resultChainName: 'text' }); // Text search
 
 // Virtual properties

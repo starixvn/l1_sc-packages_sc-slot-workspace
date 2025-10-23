@@ -323,7 +323,10 @@ async function importSingleFile(
             betLevel: betLevel,
             coinValue: coinValue,
             totalBoardCount: totalBoardCount,
-            baseBetAmount: baseBetAmount
+            baseBetAmount: baseBetAmount,
+            volatility: chainData.config.volatility,
+            patternType: metadata.patternType,
+            inactive: false
         };
         
         // Insert main chain record into database

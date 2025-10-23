@@ -185,18 +185,19 @@ class PatternConfigLogger {
 // PATTERN-AWARE FACTORY FUNCTION
 // ===============================
 
-export function createPatternSpecificBoardGeneratorFactory(patternType: string) {
+export function createPatternSpecificBoardGeneratorFactory(patternType: string, volatilityOverride?: Volatility) {
     const config = PATTERN_CONFIGS[patternType];
     
     if (!config) {
         console.warn(`⚠️ Pattern '${patternType}' not found in configurations. Using default settings.`);
         // Fallback to standard configuration
+        const effectiveVolatility = volatilityOverride || Volatility.MediumLow;
         return {
             generatorFactory: () => new BoardGenerator(
                 { reels: 6, symbolsOnReel: 5, numberOfSymbols: 11, numberOfShuffles: 3 },
                 { min: 2, max: 21 },
                 boardDefinition,
-                Volatility.MediumLow
+                effectiveVolatility
             ),
             engagementMechanics: undefined
         };
@@ -205,13 +206,17 @@ export function createPatternSpecificBoardGeneratorFactory(patternType: string) 
     const logger = new PatternConfigLogger();
     const mechanics = config.engagementMechanics;
     
+    // Use volatility override if provided, otherwise use pattern default
+    const effectiveVolatility = volatilityOverride !== undefined ? volatilityOverride : config.volatility;
+    const volatilitySource = volatilityOverride !== undefined ? '(CLI Override)' : '(Pattern Default)';
+    
     logger
         .header('🎭', 'Using pattern-specific configuration', config.name)
         .detail('Risk Profile', config.riskProfile)
         .detail('Description', config.description)
         .detail('Grid Size', `${config.boardSettings.reels}x${config.boardSettings.symbolsOnReel}`)
         .detail('Multiplier Range', `${config.multiplierSettings.min}x-${config.multiplierSettings.max}x`)
-        .detail('Volatility', config.volatility)
+        .detail('Volatility', `${effectiveVolatility} ${volatilitySource}`)
         .detailIf(!!mechanics, 'RTP Target', `${((mechanics?.targetRTP || 0.97) * 100).toFixed(0)}%`)
         .detailIf(!!mechanics?.targetHitFrequency, 'Hit Frequency Target', `${((mechanics?.targetHitFrequency || 0) * 100).toFixed(0)}%`)
         .detailIf(!!mechanics?.cascadeTarget, 'Cascade Target', `${mechanics?.cascadeTarget} tumbles`)
@@ -224,7 +229,7 @@ export function createPatternSpecificBoardGeneratorFactory(patternType: string) 
             config.boardSettings,
             config.multiplierSettings,
             boardDefinition,
-            config.volatility
+            effectiveVolatility  // Use effective volatility (override or default)
         ),
         engagementMechanics: config.engagementMechanics
     };

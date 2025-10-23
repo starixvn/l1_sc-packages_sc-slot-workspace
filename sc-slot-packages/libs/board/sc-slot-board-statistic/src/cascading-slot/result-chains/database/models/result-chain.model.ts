@@ -8,6 +8,9 @@ export interface IResultChain extends Document {
     coinValue: number;
     totalBoardCount: number;
     baseBetAmount: number;
+    volatility?: string; // Game volatility: Low, MediumLow, Medium, High, VeryHigh
+    patternType?: string; // Pattern type for easier filtering
+    inactive: boolean; // Chain inactive status - only inactive chains can be assigned to games
     createdAt: Date;
 }
 
@@ -58,6 +61,22 @@ const ResultChainSchema = new Schema<IResultChain>({
         required: true,
         min: 0.01,
         index: true
+    },
+    volatility: {
+        type: String,
+        enum: ['Low', 'MediumLow', 'Medium', 'High', 'VeryHigh'],
+        index: true
+    },
+    patternType: {
+        type: String,
+        enum: ['comeback', 'cliffhanger', 'discovery', 'tease', 'wave'],
+        index: true
+    },
+    inactive: {
+        type: Boolean,
+        default: false,
+        index: true,
+        required: true
     }
 }, {
     timestamps: { createdAt: true, updatedAt: false },
@@ -67,10 +86,14 @@ const ResultChainSchema = new Schema<IResultChain>({
 // Simple indexes for performance
 ResultChainSchema.index({ name: 1 });
 ResultChainSchema.index({ createdAt: -1 });
+ResultChainSchema.index({ active: 1 }); // For filtering active/inactive chains
 ResultChainSchema.index({ betLevel: 1, coinValue: 1 }); // For player bet selection
 ResultChainSchema.index({ totalBoardCount: 1 }); // For board count filtering
 ResultChainSchema.index({ baseBetAmount: 1 }); // For bet amount filtering
+ResultChainSchema.index({ volatility: 1, patternType: 1 }); // For volatility + pattern filtering
 ResultChainSchema.index({ betLevel: 1, coinValue: 1, totalBoardCount: 1, baseBetAmount: 1 }); // Composite index for player selection
+ResultChainSchema.index({ volatility: 1, betLevel: 1, coinValue: 1, totalBoardCount: 1 }); // Chain assignment query optimization
+ResultChainSchema.index({ active: 1, volatility: 1, patternType: 1 }); // For active chain filtering with game params
 
 // Static methods
 ResultChainSchema.statics.findByName = function(name: string) {

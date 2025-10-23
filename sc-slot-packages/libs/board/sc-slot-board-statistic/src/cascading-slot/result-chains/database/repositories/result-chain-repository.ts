@@ -8,10 +8,22 @@ export interface CreateResultChainInput {
     coinValue: number;
     totalBoardCount: number;
     baseBetAmount: number;
+    volatility?: string;
+    patternType?: string;
+    inactive?: boolean; // Chain inactive status - defaults to false
 }
 
 export interface ResultChainFilter {
     name?: string;
+    volatility?: string;
+    patternType?: string;
+    inactive?: boolean; // Filter by active/inactive status
+    betLevel?: number;
+    coinValue?: number;
+    totalBoardCountMin?: number;
+    totalBoardCountMax?: number;
+    baseBetAmountMin?: number;
+    baseBetAmountMax?: number;
     createdAfter?: Date;
     createdBefore?: Date;
 }
@@ -21,7 +33,7 @@ export class ResultChainRepository {
      * Create a new result chain in the database
      */
     async create(input: CreateResultChainInput): Promise<IResultChain> {
-        const { name, boardsData, betLevel, coinValue, totalBoardCount, baseBetAmount } = input;
+        const { name, boardsData, betLevel, coinValue, totalBoardCount, baseBetAmount, volatility, patternType, inactive = false } = input;
 
         try {
             const chainDoc = new ResultChain({
@@ -30,11 +42,14 @@ export class ResultChainRepository {
                 betLevel,
                 coinValue,
                 totalBoardCount,
-                baseBetAmount
+                baseBetAmount,
+                volatility,
+                patternType,
+                inactive
             });
 
             const savedChain = await chainDoc.save();
-            console.log(`✅ Result chain created: ${savedChain.name} (ID: ${savedChain._id})`);
+            console.log(`✅ Result chain created: ${savedChain.name} (ID: ${savedChain._id}, inactive: ${inactive})`);
             return savedChain;
         } catch (error) {
             console.error('❌ Failed to create result chain:', error);
@@ -82,6 +97,38 @@ export class ResultChainRepository {
             // Build query conditions
             if (filter.name) {
                 query.name = { $regex: filter.name, $options: 'i' };
+            }
+            
+            if (filter.volatility) {
+                query.volatility = filter.volatility;
+            }
+            
+            if (filter.patternType) {
+                query.patternType = filter.patternType;
+            }
+            
+            if (filter.inactive !== undefined) {
+                query.inactive = filter.inactive;
+            }
+            
+            if (filter.betLevel !== undefined) {
+                query.betLevel = filter.betLevel;
+            }
+            
+            if (filter.coinValue !== undefined) {
+                query.coinValue = filter.coinValue;
+            }
+            
+            if (filter.totalBoardCountMin !== undefined || filter.totalBoardCountMax !== undefined) {
+                query.totalBoardCount = {};
+                if (filter.totalBoardCountMin !== undefined) query.totalBoardCount.$gte = filter.totalBoardCountMin;
+                if (filter.totalBoardCountMax !== undefined) query.totalBoardCount.$lte = filter.totalBoardCountMax;
+            }
+            
+            if (filter.baseBetAmountMin !== undefined || filter.baseBetAmountMax !== undefined) {
+                query.baseBetAmount = {};
+                if (filter.baseBetAmountMin !== undefined) query.baseBetAmount.$gte = filter.baseBetAmountMin;
+                if (filter.baseBetAmountMax !== undefined) query.baseBetAmount.$lte = filter.baseBetAmountMax;
             }
 
             if (filter.createdAfter || filter.createdBefore) {
@@ -202,6 +249,86 @@ export class ResultChainRepository {
             return result !== null;
         } catch (error) {
             console.error('❌ Failed to delete result chain:', error);
+            throw error;
+        }
+    }
+
+    /**
+     * Activate a chain by ID
+     */
+    async activate(id: string): Promise<IResultChain | null> {
+        try {
+            if (!mongoose.Types.ObjectId.isValid(id)) {
+                return null;
+            }
+
+            const result = await ResultChain.findByIdAndUpdate(
+                id,
+                { inactive: false },
+                { new: true }
+            );
+
+            if (result) {
+                console.log(`✅ Result chain activated: ${result.name}`);
+            }
+            return result;
+        } catch (error) {
+            console.error('❌ Failed to activate result chain:', error);
+            throw error;
+        }
+    }
+
+    /**
+     * Deactivate a chain by ID
+     */
+    async deactivate(id: string): Promise<IResultChain | null> {
+        try {
+            if (!mongoose.Types.ObjectId.isValid(id)) {
+                return null;
+            }
+
+            const result = await ResultChain.findByIdAndUpdate(
+                id,
+                { inactive: true },
+                { new: true }
+            );
+
+            if (result) {
+                console.log(`✅ Result chain deactivated: ${result.name}`);
+            }
+            return result;
+        } catch (error) {
+            console.error('❌ Failed to deactivate result chain:', error);
+            throw error;
+        }
+    }
+
+    /**
+     * Bulk activate/deactivate chains by filter
+     */
+    async bulkUpdateInactiveStatus(filter: ResultChainFilter, inactive: boolean): Promise<number> {
+        try {
+            const query: any = {};
+
+            // Build query conditions (reuse same logic as getFiltered)
+            if (filter.name) {
+                query.name = { $regex: filter.name, $options: 'i' };
+            }
+            
+            if (filter.volatility) {
+                query.volatility = filter.volatility;
+            }
+            
+            if (filter.patternType) {
+                query.patternType = filter.patternType;
+            }
+
+            const result = await ResultChain.updateMany(query, { inactive: inactive });
+            
+            console.log(`✅ Updated ${result.modifiedCount} chains to inactive=${inactive}`);
+            return result.modifiedCount;
+        } catch (error) {
+            console.error('❌ Failed to bulk update chain inactive status:', error);
             throw error;
         }
     }

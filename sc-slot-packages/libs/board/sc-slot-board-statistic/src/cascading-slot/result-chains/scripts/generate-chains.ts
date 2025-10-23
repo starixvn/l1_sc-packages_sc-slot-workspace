@@ -23,6 +23,7 @@ import {
     getTotalBetConfigurations, 
     formatBetConfiguration 
 } from './betSettings';
+import { PATTERN_CONFIGS } from '../orchestration/custom-generator-configs';
 
 // Available patterns for chain generation
 const AVAILABLE_PATTERNS = {
@@ -64,9 +65,54 @@ interface GenerationConfig {
     betLevel?: number;  // Optional for single config mode
     coinValue?: number; // Optional for single config mode
     betAmounts?: number[]; // For multiple config mode - array of unique bet amounts
+    volatility?: Volatility; // Optional volatility override (from command line)
 }
 
 // Note: BetConfiguration interface and arrays are now imported from betSettings.ts
+
+/**
+ * Parse volatility string to enum value
+ * @param volatilityStr - String representation (e.g., "MediumLow", "VeryHigh", "2", "5")
+ * @returns Volatility enum value
+ */
+function parseVolatility(volatilityStr: string): Volatility {
+    // Support both string names and numeric values
+    const volatilityMap: { [key: string]: Volatility } = {
+        'low': Volatility.Low,
+        'mediumlow': Volatility.MediumLow,
+        'medium': Volatility.Medium,
+        'high': Volatility.High,
+        'veryhigh': Volatility.VeryHigh,
+        '1': Volatility.Low,
+        '2': Volatility.MediumLow,
+        '3': Volatility.Medium,
+        '4': Volatility.High,
+        '5': Volatility.VeryHigh
+    };
+    
+    const normalized = volatilityStr.toLowerCase().replace(/[_-]/g, '');
+    const volatility = volatilityMap[normalized];
+    
+    if (!volatility) {
+        throw new Error(`Invalid volatility: ${volatilityStr}. Valid values: Low, MediumLow, Medium, High, VeryHigh (or 1-5)`);
+    }
+    
+    return volatility;
+}
+
+/**
+ * Get volatility name for display
+ */
+function getVolatilityName(volatility: Volatility): string {
+    const names = {
+        [Volatility.Low]: 'Low',
+        [Volatility.MediumLow]: 'MediumLow',
+        [Volatility.Medium]: 'Medium',
+        [Volatility.High]: 'High',
+        [Volatility.VeryHigh]: 'VeryHigh'
+    };
+    return names[volatility] || 'Unknown';
+}
 
 /**
  * Find a valid bet level/coin value combination for a given base bet amount
@@ -106,6 +152,7 @@ async function main() {
         console.log(`   Patterns: ${config.patterns.join(', ')}`);
         console.log(`   Board Counts: ${config.boardCounts.join(', ')}`);
         console.log(`   Target RTP: ${(config.targetRTP * 100).toFixed(1)}%`);
+        console.log(`   Volatility: ${config.volatility ? getVolatilityName(config.volatility) : 'Pattern-Default'}`);
         
         // Determine if using single or multiple bet amounts
         // Note: For filename consistency, we use baseBetAmount (not totalBetAmount)
@@ -167,7 +214,13 @@ async function main() {
                 for (const boardCount of config.boardCounts) {
                     const timestamp = Date.now();
                     const baseBetAmountStr = baseBetAmount.toFixed(2).replace('.', '_');
-                    const chainName = `${pattern}-${boardCount}boards-bet${baseBetAmountStr}-${timestamp}`;
+                    
+                    // Determine volatility to use (CLI override or pattern default)
+                    const patternConfig = PATTERN_CONFIGS[pattern];
+                    const effectiveVolatility = config.volatility || patternConfig?.volatility || Volatility.MediumLow;
+                    const volatilityStr = getVolatilityName(effectiveVolatility).toLowerCase();
+                    
+                    const chainName = `${pattern}-${volatilityStr}-${boardCount}boards-bet${baseBetAmountStr}-${timestamp}`;
                     
                     console.log(`🎭 Generating: ${chainName}`);
                     
@@ -179,7 +232,8 @@ async function main() {
                         const currentConfig = {
                             ...config,
                             betLevel: validConfig.betLevel,
-                            coinValue: validConfig.coinValue
+                            coinValue: validConfig.coinValue,
+                            volatility: effectiveVolatility  // Pass effective volatility
                         };
                         
                         const chainResult = await generateChain(pattern, boardCount, currentConfig);
@@ -200,6 +254,11 @@ async function main() {
                             totalBetAmount: totalBetAmount
                         };
 
+                        // Get the effective volatility that was used for generation
+                        const patternConfigForSave = PATTERN_CONFIGS[pattern];
+                        const effectiveVolatilityForSave = config.volatility || patternConfigForSave?.volatility || Volatility.MediumLow;
+                        const volatilityName = getVolatilityName(effectiveVolatilityForSave);
+                        
                         const chainData = {
                             metadata: {
                                 name: chainName,
@@ -217,7 +276,7 @@ async function main() {
                             config: {
                                 boardCount: boardCount,
                                 targetRTP: config.targetRTP,
-                                volatility: 'MediumLow',
+                                volatility: volatilityName,  // Use actual volatility that was used
                                 maxRetries: config.maxRetries,
                                 tolerance: config.tolerance,
                                 betLevel: config.betLevel,
@@ -360,10 +419,24 @@ function parseArguments(args: string[]): GenerationConfig {
     // Positional arguments (like test-pattern scripts)
     const boardCount = positionalArgs[0] ? parseInt(positionalArgs[0], 10) : 125;
     const patternsInput = positionalArgs[1] || 'comeback,cliffhanger,discovery,tease,wave';
+    const volatilityInput = positionalArgs[2]; // New: volatility parameter
     
     let betLevel: number | undefined;
     let coinValue: number | undefined;
     let betAmounts: number[] | undefined;
+    let volatility: Volatility | undefined;
+
+    // Parse volatility if provided
+    if (volatilityInput) {
+        try {
+            volatility = parseVolatility(volatilityInput);
+            console.log(`🎰 Using custom volatility: ${getVolatilityName(volatility)}`);
+        } catch (error) {
+            console.error(`❌ ${error.message}`);
+            showHelp();
+            process.exit(1);
+        }
+    }
 
     if (useMultipleConfigs) {
         // Generate unique bet amounts (reduces file count by grouping duplicate bet amounts)
@@ -371,9 +444,9 @@ function parseArguments(args: string[]): GenerationConfig {
         const totalPossible = getTotalBetConfigurations();
         console.log(`🎯 Multiple configuration mode: ${betAmounts.length} unique bet amounts (reduced from ${totalPossible} total combinations)`);
     } else {
-        // Single configuration mode
-        betLevel = positionalArgs[2] ? parseFloat(positionalArgs[2]) : 0.5;
-        coinValue = positionalArgs[3] ? parseFloat(positionalArgs[3]) : 0.1;
+        // Single configuration mode - bet parameters shift to position 3 and 4
+        betLevel = positionalArgs[3] ? parseFloat(positionalArgs[3]) : 0.5;
+        coinValue = positionalArgs[4] ? parseFloat(positionalArgs[4]) : 0.1;
     }
     
     // Validate board count (allow smaller counts for testing)
@@ -419,7 +492,8 @@ function parseArguments(args: string[]): GenerationConfig {
         outputDir: './chain-output',
         betLevel,
         coinValue,
-        betAmounts
+        betAmounts,
+        volatility
     };
 }
 
@@ -429,15 +503,17 @@ Enhanced Chain Generation Script (JSON Output)
 
 Usage: 
   Single Configuration:
-    npm run generate-chains [boardCount] [patterns] [betLevel] [coinValue]
+    npm run generate-chains [boardCount] [patterns] [volatility] [betLevel] [coinValue]
   
   Multiple Configurations:
-    npm run generate-chains [boardCount] [patterns] multi
-    npm run generate-chains [boardCount] [patterns] all-configs
+    npm run generate-chains [boardCount] [patterns] [volatility] multi
+    npm run generate-chains [boardCount] [patterns] [volatility] all-configs
 
 Arguments:
   boardCount    Number of boards per chain (10-150, default: 125)
   patterns      Comma-separated pattern types (default: all patterns)
+  volatility    Game volatility: Low, MediumLow, Medium, High, VeryHigh (or 1-5)
+                If omitted, uses pattern's default volatility
   betLevel      Bet level multiplier (0.1-10.0, default: 0.5) [single mode only]
   coinValue     Coin value in currency (0.01-2.0, default: 0.1) [single mode only]
 
@@ -446,6 +522,13 @@ Flags:
   all-configs   Alias for multi
   --help, -h    Show this help message
 
+Volatility Values:
+  Low (1)       - Frequent small wins, low variance
+  MediumLow (2) - Balanced small-medium wins (default for most patterns)
+  Medium (3)    - Moderate variance, mixed win sizes
+  High (4)      - Higher variance, occasional big wins
+  VeryHigh (5)  - Rare massive wins, high risk/reward
+
 Multiple Configuration Arrays:
   Bet Levels: [${BET_LEVELS.join(', ')}]
   Coin Values: [${COIN_VALUES.join(', ')}]
@@ -453,22 +536,25 @@ Multiple Configuration Arrays:
 
 Examples:
   Single Configuration Mode:
-    npm run generate-chains                         # All patterns, 125 boards, default bet settings
-    npm run generate-chains 100                    # All patterns, 100 boards, default bet settings
-    npm run generate-chains 100 tease              # Tease pattern only, 100 boards
-    npm run generate-chains 100 "tease,wave" 1.0 0.5 # Custom bet: level 1.0, coin 0.5
+    npm run generate-chains                              # All patterns, default volatility per pattern
+    npm run generate-chains 100                          # 100 boards, default volatility
+    npm run generate-chains 100 tease VeryHigh          # Tease pattern with VeryHigh volatility
+    npm run generate-chains 100 "tease,wave" MediumLow  # Multiple patterns, MediumLow volatility
+    npm run generate-chains 100 comeback 5 1.0 0.5      # Comeback with VeryHigh(5), custom bet
   
   Multiple Configuration Mode:
-    npm run generate-chains 50 tease multi # Tease pattern, ~27 unique bet amounts
-    npm run generate-chains 30 multi       # All patterns, ~27 amounts each
-    npm run generate-chains 25 "comeback,wave" all-configs # 2 patterns × ~27 amounts
+    npm run generate-chains 50 tease VeryHigh multi     # Tease + VeryHigh, all bet amounts
+    npm run generate-chains 30 comeback Low multi        # Comeback + Low volatility, all bets
+    npm run generate-chains 25 "comeback,wave" 2 all-configs # 2 patterns, MediumLow(2)
 
-Available Patterns (with automatic board generator configuration):
-  - comeback     : 🛡️  Recovery pattern → Easy difficulty, 1x-18x multipliers, frequent wins
-  - cliffhanger  : 🎲  High-suspense pattern → Hard difficulty, 3x-50x multipliers, rare big wins  
-  - discovery    : 🔍  Exploration pattern → Medium difficulty, 2x-30x multipliers, feature-rich
-  - tease        : ⚖️   Near-miss pattern → Medium difficulty, 2x-25x multipliers, balanced
-  - wave         : 🌊  Rhythmic pattern → Medium difficulty, 2x-21x multipliers, consistent
+Available Patterns:
+  - comeback     : 🛡️  Recovery pattern (default: MediumLow)
+  - cliffhanger  : 🎲  High-suspense pattern (default: VeryHigh)
+  - discovery    : 🔍  Exploration pattern (default: MediumLow)
+  - tease        : ⚖️   Near-miss pattern (default: MediumLow)
+  - wave         : 🌊  Rhythmic pattern (default: MediumLow)
+
+Note: Volatility parameter OVERRIDES pattern defaults to match game configuration
 
 Settings:
   - Target RTP: 97%
@@ -507,8 +593,9 @@ async function generateChain(patternType: string, boardCount: number, config: Ge
         // 🎭 PATTERN-SPECIFIC BOARD GENERATOR
         // ===============================
         
-        // Get pattern-specific generator and engagement mechanics
-        const { generatorFactory, engagementMechanics } = createPatternSpecificBoardGeneratorFactory(patternType);
+        // Get pattern-specific generator and engagement mechanics with volatility override
+        const volatilityOverride = config.volatility; // Use volatility from CLI if provided
+        const { generatorFactory, engagementMechanics } = createPatternSpecificBoardGeneratorFactory(patternType, volatilityOverride);
         
         // Use custom RTP from engagement mechanics or fall back to config default
         const targetRTP = engagementMechanics?.targetRTP || config.targetRTP;
@@ -535,11 +622,15 @@ async function generateChain(patternType: string, boardCount: number, config: Ge
 
         const orchestrator = new ResultChainOrchestrator(generatorFactory, patternRtpConfig, engagementMechanics);
 
+        // Determine effective volatility (CLI override or pattern default)
+        const patternConfig = PATTERN_CONFIGS[patternType];
+        const effectiveVolatility = config.volatility || patternConfig?.volatility || Volatility.MediumLow;
+        
         // Generate result chain with pattern-specific parameters
         const chainResult = await orchestrator.generateResultChain({
             boardCount: boardCount,
             targetRTP: targetRTP,  // Use pattern-specific RTP
-            volatility: Volatility.MediumLow,
+            volatility: effectiveVolatility,  // Use effective volatility (CLI override or pattern default)
             maxRetries: config.maxRetries,
             tolerance: tolerance,  // Use pattern-specific tolerance
             betLevel: config.betLevel,
