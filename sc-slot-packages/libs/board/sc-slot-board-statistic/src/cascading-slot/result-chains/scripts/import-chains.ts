@@ -15,6 +15,46 @@ import * as dotenv from 'dotenv';
 // Load environment variables
 dotenv.config();
 
+/**
+ * Convert volatility string name to numeric enum value
+ * Volatility enum: Low=1, MediumLow=2, Medium=3, High=4, VeryHigh=5
+ */
+function convertVolatilityToNumber(volatility: string | number | undefined): number {
+    // If already a number, return it
+    if (typeof volatility === 'number') {
+        return volatility;
+    }
+    
+    // If undefined or invalid, default to MediumLow (2)
+    if (!volatility) {
+        console.warn('⚠️  Volatility not specified, defaulting to MediumLow (2)');
+        return 2;
+    }
+    
+    // Convert string name to number
+    const volatilityMap: { [key: string]: number } = {
+        'Low': 1,
+        'MediumLow': 2,
+        'Medium': 3,
+        'High': 4,
+        'VeryHigh': 5,
+        // Also support numeric strings
+        '1': 1,
+        '2': 2,
+        '3': 3,
+        '4': 4,
+        '5': 5
+    };
+    
+    const value = volatilityMap[volatility];
+    if (value === undefined) {
+        console.warn(`⚠️  Unknown volatility '${volatility}', defaulting to MediumLow (2)`);
+        return 2;
+    }
+    
+    return value;
+}
+
 interface ImportConfig {
     inputDir: string;
     batchSize: number;
@@ -316,6 +356,9 @@ async function importSingleFile(
             throw new Error(`Invalid coinValue: ${coinValue} (must be between 0.01 and 10.0)`);
         }
 
+        // Convert volatility from string name to numeric value
+        const volatilityValue = convertVolatilityToNumber(chainData.config.volatility);
+
         // Prepare simplified chain input for main collection
         const chainInput: CreateResultChainInput = {
             name: metadata.name,
@@ -324,9 +367,9 @@ async function importSingleFile(
             coinValue: coinValue,
             totalBoardCount: totalBoardCount,
             baseBetAmount: baseBetAmount,
-            volatility: chainData.config.volatility,
+            volatility: volatilityValue, // Store as numeric value (1-5)
             patternType: metadata.patternType,
-            inactive: false
+            inactive: false // false = active, true = inactive
         };
         
         // Insert main chain record into database
@@ -350,7 +393,8 @@ async function importSingleFile(
                 duration: metadata.duration || 0,
                 finalRTP: metadata.actualRTP,
                 targetAchieved: metadata.meetsTargetRTP || false
-            }
+            },
+            volatility: volatilityValue // Pass numeric volatility to statistics
         };
 
         // Use the pre-calculated totalWagered from betData - this is already calculated in generate-chains

@@ -19,7 +19,7 @@ export interface IResultChainStatistics extends Document {
     createdBy?: string;
     betLevel: number;
     coinValue: number;
-    volatility?: string; // Game volatility: Low, MediumLow, Medium, High, VeryHigh
+    volatility?: number; // Game volatility: 1=Low, 2=MediumLow, 3=Medium, 4=High, 5=VeryHigh
     // Multiplier statistics for analysis
     totalWonWithMultipliers?: number;     // Total wins including multiplier effects
     totalWonWithoutMultipliers?: number;  // Total wins before multiplier effects
@@ -146,8 +146,8 @@ const ResultChainStatisticsSchema = new Schema<IResultChainStatistics>({
         index: true
     },
     volatility: {
-        type: String,
-        enum: ['Low', 'MediumLow', 'Medium', 'High', 'VeryHigh'],
+        type: Number,
+        enum: [1, 2, 3, 4, 5], // 1=Low, 2=MediumLow, 3=Medium, 4=High, 5=VeryHigh
         index: true
     },
     // Multiplier statistics for analysis

@@ -8,7 +8,7 @@ export interface IResultChain extends Document {
     coinValue: number;
     totalBoardCount: number;
     baseBetAmount: number;
-    volatility?: string; // Game volatility: Low, MediumLow, Medium, High, VeryHigh
+    volatility?: number; // Game volatility: 1=Low, 2=MediumLow, 3=Medium, 4=High, 5=VeryHigh
     patternType?: string; // Pattern type for easier filtering
     inactive: boolean; // Chain inactive status - only inactive chains can be assigned to games
     createdAt: Date;
@@ -63,8 +63,8 @@ const ResultChainSchema = new Schema<IResultChain>({
         index: true
     },
     volatility: {
-        type: String,
-        enum: ['Low', 'MediumLow', 'Medium', 'High', 'VeryHigh'],
+        type: Number,
+        enum: [1, 2, 3, 4, 5], // 1=Low, 2=MediumLow, 3=Medium, 4=High, 5=VeryHigh
         index: true
     },
     patternType: {

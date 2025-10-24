@@ -13,7 +13,7 @@ export interface CreateResultChainStatisticsInput {
 
 export interface ResultChainStatisticsFilter {
     patternType?: string;
-    volatility?: string; // Add volatility filter
+    volatility?: number; // Numeric volatility: 1=Low, 2=MediumLow, 3=Medium, 4=High, 5=VeryHigh
     status?: 'active' | 'archived' | 'testing';
     boardCountMin?: number;
     boardCountMax?: number;

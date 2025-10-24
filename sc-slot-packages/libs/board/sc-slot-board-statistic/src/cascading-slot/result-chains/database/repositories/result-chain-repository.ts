@@ -8,16 +8,16 @@ export interface CreateResultChainInput {
     coinValue: number;
     totalBoardCount: number;
     baseBetAmount: number;
-    volatility?: string;
+    volatility?: number; // Numeric value: 1=Low, 2=MediumLow, 3=Medium, 4=High, 5=VeryHigh
     patternType?: string;
     inactive?: boolean; // Chain inactive status - defaults to false
 }
 
 export interface ResultChainFilter {
     name?: string;
-    volatility?: string;
+    volatility?: number; // Numeric value: 1=Low, 2=MediumLow, 3=Medium, 4=High, 5=VeryHigh
     patternType?: string;
-    inactive?: boolean; // Filter by active/inactive status
+    inactive?: boolean; // Filter by inactive/active status (false = active)
     betLevel?: number;
     coinValue?: number;
     totalBoardCountMin?: number;
