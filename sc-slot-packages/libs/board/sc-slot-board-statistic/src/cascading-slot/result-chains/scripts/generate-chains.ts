@@ -13,17 +13,37 @@ import { commonDefinition, boardDefinition } from '../../generator-definition';
 import { writeFileSync, mkdirSync, existsSync } from 'fs';
 import { join } from 'path';
 import { createPatternSpecificBoardGeneratorFactory, getPatternConfigSummary } from '../orchestration/custom-generator-configs';
-import { 
-    BetConfiguration, 
-    BET_LEVELS, 
-    COIN_VALUES, 
+import {
+    BetConfiguration,
+    BET_LEVELS,
+    COIN_VALUES,
     generateAllBetConfigurations,
     generateUniqueBetAmountConfigurations,
     getUniqueBetAmounts,
-    getTotalBetConfigurations, 
-    formatBetConfiguration 
+    getTotalBetConfigurations,
+    formatBetConfiguration
 } from './betSettings';
 import { PATTERN_CONFIGS } from '../orchestration/custom-generator-configs';
+import { defaultOdds } from '../../generator-definition';
+
+/**
+ * Calculate free spin awards using actual configuration from generator-definition.ts
+ */
+function calculateFreeSpinAward(scatterCount: number, isRetrigger: boolean): number {
+    if (scatterCount < 4) {
+        return 0; // No free spins awarded
+    }
+
+    if (isRetrigger) {
+        // Free spin retrigger mode - use additionalOdds from generator-definition
+        const retriggerRule = defaultOdds.freeSpins.additionalOdds.find(rule => scatterCount >= rule.count);
+        return retriggerRule ? retriggerRule.odds : 0;
+    } else {
+        // Base game mode - use initialOdds from generator-definition
+        const initialRule = defaultOdds.freeSpins.initialOdds.find(rule => scatterCount >= rule.count);
+        return initialRule ? initialRule.odds : 0;
+    }
+}
 
 // Available patterns for chain generation
 const AVAILABLE_PATTERNS = {
@@ -600,6 +620,7 @@ async function generateChain(patternType: string, boardCount: number, config: Ge
         // Use custom RTP from engagement mechanics or fall back to config default
         const targetRTP = engagementMechanics?.targetRTP || config.targetRTP;
         const tolerance = engagementMechanics?.rtpTolerance || config.tolerance;
+        const freeSpinRTP = engagementMechanics?.freeSpinRTP || defaultOdds.freeSpins.rtp || 0.3;
         
         // Update RTP configuration with pattern-specific values
         const patternRtpConfig = {
@@ -610,6 +631,7 @@ async function generateChain(patternType: string, boardCount: number, config: Ge
         
         console.log(`🎯 Pattern: ${patternType.toUpperCase()}`);
         console.log(`📋 RTP Config: Target ${(targetRTP * 100).toFixed(1)}% ± ${(tolerance * 100).toFixed(1)}%`);
+        console.log(`   Free Spin RTP: ${(freeSpinRTP * 100).toFixed(0)}%`);
         if (engagementMechanics) {
             if (engagementMechanics.targetHitFrequency) {
                 console.log(`   Hit Frequency Target: ${(engagementMechanics.targetHitFrequency * 100).toFixed(0)}%`);
@@ -639,11 +661,12 @@ async function generateChain(patternType: string, boardCount: number, config: Ge
 
         const executionTime = Date.now() - startTime;
 
-        // Calculate metrics (use totalBetAmount for wagering calculations)
-        const totalWagered = chainResult.boards.length * totalBetAmount;
+        // Calculate metrics (RTP includes free spins as house contribution to total value)
+        let totalWagered = 0; // Total value provided (player bet + house free spin value)
         let totalWon = 0;
         let featuresTriggered = 0;
         let freeSpinsWon = 0;
+        let freeSpinsPlayed = 0;
         let cascadeCount = 0;
 
         const winDistribution = {
@@ -654,10 +677,24 @@ async function generateChain(patternType: string, boardCount: number, config: Ge
         };
 
         chainResult.boards.forEach(board => {
-            // Use new totalWin field that includes board multipliers, fallback to totalTumbleWin
+            // RTP calculation: Player wagering vs Total value received (wins + free spin bonuses)
+            const playerBet = totalBetAmount; // Only player-paid bets in wagering
+
+            // Count scatter symbols (symbol 9) and calculate free spins awarded using generator-definition rules
+            const scatterCount = board.board.filter(symbol => symbol === 9).length;
+            const freeSpinCount = calculateFreeSpinAward(scatterCount, false); // Base game mode
+            const freeSpinValue = freeSpinCount * totalBetAmount; // Total value of free spins provided
+            const expectedFreeSpinPayout = freeSpinValue * freeSpinRTP; // Expected payout from free spins using pattern RTP
+
+            totalWagered += playerBet; // Only player contributions
+            freeSpinsPlayed += freeSpinCount;
+
+            // Use new totalWin field that includes board multipliers and free spin wins, fallback to totalTumbleWin
             const boardWin = board.totalWin || board.totalTumbleWin || 0;
-            totalWon += boardWin;
-            
+            // Add both actual wins AND expected payout from house-provided free spins
+            const totalValueReceived = boardWin + expectedFreeSpinPayout;
+            totalWon += totalValueReceived;
+
             if (boardWin === 0) {
                 winDistribution.losses++;
             } else {
@@ -666,7 +703,7 @@ async function generateChain(patternType: string, boardCount: number, config: Ge
                 else if (multiplier <= 5) winDistribution.mediumWins++;
                 else winDistribution.bigWins++;
             }
-            
+
             // Count features and cascades - access available properties
             if ((board as any).features) {
                 featuresTriggered += (board as any).features.length;
@@ -698,7 +735,8 @@ async function generateChain(patternType: string, boardCount: number, config: Ge
                 totalTumbles: cascadeCount,
                 averageTumblesPerBoard: cascadeCount / chainResult.boards.length,
                 totalFeatures: featuresTriggered,
-                totalFreeSpins: freeSpinsWon
+                totalFreeSpinsWon: freeSpinsWon,
+                totalFreeSpinsPlayed: freeSpinsPlayed
             },
             generationStats: {
                 attempts: (chainResult as any).generationAttempts || 1,

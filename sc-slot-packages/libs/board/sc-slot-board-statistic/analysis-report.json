@@ -2,54 +2,54 @@
   "reportInfo": {
     "totalReports": 1,
     "reportFile": "report-40-1.json",
-    "totalRounds": 1389127,
-    "totalBet": "1341750.00",
-    "totalPayout": "1296202.40"
+    "totalRounds": 1354014,
+    "totalBet": "1318550.00",
+    "totalPayout": "1283770.50"
   },
   "rtpAnalysis": {
-    "totalRTP": "96.5895%",
+    "totalRTP": "97.3808%",
     "baseGameRTP": "6.0000%",
-    "bonusModeRTP": "90.6054%",
-    "rtpDeviation": "3.5529%",
+    "bonusModeRTP": "91.3623%",
+    "rtpDeviation": "4.6440%",
     "rtpRange": {
-      "min": "90.0996%",
-      "max": "101.9050%"
+      "min": "91.6822%",
+      "max": "104.9603%"
     }
   },
   "volatility": {
-    "rating": "Low",
-    "coefficientOfVariation": "0.036783",
-    "standardDeviation": "0.035529"
+    "rating": "Medium",
+    "coefficientOfVariation": "0.047689",
+    "standardDeviation": "0.046440"
   },
   "maxWinAnalysis": {
-    "maxWin": "306.80x",
+    "maxWin": "602.50x",
     "maxWinFrequency": "0.0063%",
-    "maxWinPerRound": "1 in 15899"
+    "maxWinPerRound": "1 in 15903"
   },
   "frequencyAnalysis": {
-    "hitFrequency": "36.7869%",
+    "hitFrequency": "36.8059%",
     "hitRate": "1 in 2.72",
-    "freeSpinTriggerFrequency": "3.1449%",
-    "freeSpinTriggerRate": "1 in 31.80",
-    "extraFreeSpinFrequency": "0.5018%",
-    "multiplierFrequency": "34.0375%",
+    "freeSpinTriggerFrequency": "3.1440%",
+    "freeSpinTriggerRate": "1 in 31.81",
+    "extraFreeSpinFrequency": "0.5073%",
+    "multiplierFrequency": "33.8555%",
     "win100xBetFrequency": "0.0000%",
     "win100xBetRate": "1 in N/A"
   },
   "bonusFeatures": {
     "totalBuyFreeSpins": 10000,
-    "buyFreeSpinsPercentage": "0.7199%"
+    "buyFreeSpinsPercentage": "0.7385%"
   },
   "freeSpinsEfficiency": {
     "baseGameHitFrequency": "100.0000%",
     "baseGameHitRate": "1 in 1.00",
-    "freeSpinHitFrequency": "34.7347%",
+    "freeSpinHitFrequency": "34.7544%",
     "freeSpinHitRate": "1 in 2.88",
     "efficiencyRatio": "0.35x",
-    "avgBaseGameWin": "8.0505",
-    "avgFreeSpinWin": "3.9473",
+    "avgBaseGameWin": "7.9113",
+    "avgFreeSpinWin": "3.9103",
     "payoutMultiplier": "0.49x",
     "totalBaseGameRounds": 10000,
-    "totalFreeSpinRounds": 307980
+    "totalFreeSpinRounds": 308070
   }
 }

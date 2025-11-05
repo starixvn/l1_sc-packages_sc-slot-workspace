@@ -9,6 +9,7 @@ import { boardDefinition } from "../../generator-definition";
 export interface EngagementMechanics {
     targetRTP?: number;                // Custom RTP target (e.g., 0.96, 1.10)
     rtpTolerance?: number;             // Custom RTP tolerance (e.g., 0.02 for ±2%)
+    freeSpinRTP?: number;              // Free spin RTP (e.g., 0.3 for 30%)
     targetHitFrequency?: number;       // 0.0-1.0 (e.g., 0.50 for 50%)
     premiumSymbolBoost?: number;       // Multiplier for symbols 7-8 weight (e.g., 1.8)
     scatterBoost?: number;             // Multiplier for symbol 9 weight (e.g., 2.5)
@@ -110,6 +111,7 @@ export const PATTERN_CONFIGS: { [key: string]: PatternBoardConfig } = {
         engagementMechanics: {
             targetRTP: 0.96,              // Lower 96% RTP
             rtpTolerance: 0.01,           // ±1%
+            freeSpinRTP: 0.25,            // Lower 25% RTP for free spins (compensates for frequency)
             scatterBoost: 2.5,            // 2.5x scatter frequency compensates
             cascadeTarget: 3.5,           // 3-4 tumbles average
         },

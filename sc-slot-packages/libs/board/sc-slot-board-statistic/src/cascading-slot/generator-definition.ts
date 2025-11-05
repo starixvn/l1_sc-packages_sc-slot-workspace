@@ -251,5 +251,6 @@ export const defaultOdds = {
       { count: 6, odds: 15 },
     ],
     additionalOdds: [{ count: 3, odds: 5 }],
+    rtp: 0.3, // Free spin RTP (30% of free spin value is returned to player)
   },
 };
