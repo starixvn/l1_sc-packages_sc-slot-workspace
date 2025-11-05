@@ -821,14 +821,13 @@ export class ResultChainOrchestrator {
         }
 
         if (isRetrigger) {
-            // Free spin retrigger mode - use additionalOdds
-            // 4+ scatter symbols → 5 additional free spins (regardless of count)
-            return 5;
+            // Free spin retrigger mode - use additionalOdds from generator-definition
+            const retriggerRule = defaultOdds.freeSpins.additionalOdds.find(rule => scatterCount >= rule.count);
+            return retriggerRule ? retriggerRule.odds : 0;
         } else {
-            // Base game mode - use initialOdds
-            if (scatterCount === 4) return 3;   // 4 scatters → 3 free spins
-            if (scatterCount === 5) return 6;   // 5 scatters → 6 free spins
-            if (scatterCount >= 6) return 18;   // 6+ scatters → 18 free spins
+            // Base game mode - use initialOdds from generator-definition
+            const initialRule = defaultOdds.freeSpins.initialOdds.find(rule => scatterCount >= rule.count);
+            return initialRule ? initialRule.odds : 0;
         }
 
         return 0;
