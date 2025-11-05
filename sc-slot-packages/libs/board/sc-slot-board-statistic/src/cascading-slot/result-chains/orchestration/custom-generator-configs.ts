@@ -111,7 +111,7 @@ export const PATTERN_CONFIGS: { [key: string]: PatternBoardConfig } = {
         engagementMechanics: {
             targetRTP: 0.96,              // Lower 96% RTP
             rtpTolerance: 0.01,           // ±1%
-            freeSpinRTP: 0.25,            // Lower 25% RTP for free spins (compensates for frequency)
+            freeSpinRTP: 0.3,            // Lower 30% RTP for free spins (compensates for frequency)
             scatterBoost: 2.5,            // 2.5x scatter frequency compensates
             cascadeTarget: 3.5,           // 3-4 tumbles average
         },

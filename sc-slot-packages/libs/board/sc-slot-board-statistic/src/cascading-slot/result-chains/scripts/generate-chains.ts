@@ -7,9 +7,8 @@
  */
 
 import { ResultChainOrchestrator } from '../orchestration/result-chain-orchestrator';
-import { BoardGenerator } from "sc-slot-board-generator";
 import { Volatility } from 'sc-slot-board-generator/lib/volatility';
-import { commonDefinition, boardDefinition } from '../../generator-definition';
+import { commonDefinition } from '../../generator-definition';
 import { writeFileSync, mkdirSync, existsSync } from 'fs';
 import { join } from 'path';
 import { createPatternSpecificBoardGeneratorFactory, getPatternConfigSummary } from '../orchestration/custom-generator-configs';
@@ -17,11 +16,8 @@ import {
     BetConfiguration,
     BET_LEVELS,
     COIN_VALUES,
-    generateAllBetConfigurations,
-    generateUniqueBetAmountConfigurations,
     getUniqueBetAmounts,
     getTotalBetConfigurations,
-    formatBetConfiguration
 } from './betSettings';
 import { PATTERN_CONFIGS } from '../orchestration/custom-generator-configs';
 import { defaultOdds } from '../../generator-definition';
