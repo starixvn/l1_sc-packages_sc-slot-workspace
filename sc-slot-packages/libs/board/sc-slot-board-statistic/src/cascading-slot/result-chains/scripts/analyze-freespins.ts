@@ -10,6 +10,7 @@
 
 import * as fs from 'fs';
 import * as path from 'path';
+import { calculateFreeSpinAward } from '../utils/free-spin-utils';
 import { defaultOdds } from '../../generator-definition';
 
 interface FreeSpinTrigger {
@@ -95,25 +96,6 @@ interface ChainData {
     }>;
 }
 
-/**
- * Calculate free spin award based on scatter count and game mode
- * Using actual configuration from generator-definition.ts
- */
-function calculateFreeSpinAward(scatterCount: number, isRetrigger: boolean): number {
-    if (scatterCount < 4) {
-        return 0; // No free spins awarded
-    }
-
-    if (isRetrigger) {
-        // Free spin retrigger mode - use additionalOdds from generator-definition
-        const retriggerRule = defaultOdds.freeSpins.additionalOdds.find(rule => scatterCount >= rule.count);
-        return retriggerRule ? retriggerRule.odds : 0;
-    } else {
-        // Base game mode - use initialOdds from generator-definition
-        const initialRule = defaultOdds.freeSpins.initialOdds.find(rule => scatterCount >= rule.count);
-        return initialRule ? initialRule.odds : 0;
-    }
-}
 
 function analyzeChainFile(filePath: string): ChainAnalysis | null {
     try {
@@ -368,8 +350,45 @@ function main(): SummaryReport {
 }
 
 // Run main function if this is the entry point
-if (import.meta.url === `file://${process.argv[1]}`) {
-    main();
+if (import.meta.url === `file://${process.argv[1]}` || process.argv[1]?.endsWith('analyze-freespins.ts')) {
+    // Check if a specific file was provided as argument
+    const specificFile = process.argv[2];
+    if (specificFile) {
+        console.log(`🎯 Analyzing specific file: ${specificFile}\n`);
+        try {
+            const analysis = analyzeChainFile(specificFile);
+            if (analysis) {
+                console.log('📊 ANALYSIS RESULTS');
+                console.log('------------------');
+                console.log(`File: ${analysis.fileName}`);
+                console.log(`Total Boards: ${analysis.totalBoards}`);
+                console.log(`Free Spin Triggers: ${analysis.statistics.triggersCount}`);
+                console.log(`Total Free Spins Awarded: ${analysis.statistics.totalFreeSpinsAwarded}`);
+                console.log(`Retriggers: ${analysis.statistics.retriggersCount}`);
+                console.log(`Total Retrigger Spins: ${analysis.statistics.totalRetriggerSpins}`);
+
+                console.log('\n🎯 FREE SPIN TRIGGER DETAILS');
+                console.log('---------------------------');
+                analysis.freeSpinTriggers.forEach(trigger => {
+                    console.log(`Board ${trigger.boardIndex}: ${trigger.scatterCount} scatters → ${trigger.freeSpinsAwarded} free spins`);
+                });
+
+                if (analysis.retriggers.length > 0) {
+                    console.log('\n🔄 RETRIGGER DETAILS');
+                    console.log('-------------------');
+                    analysis.retriggers.forEach(retrigger => {
+                        console.log(`Board ${retrigger.boardIndex}: ${retrigger.scatterCount} scatters → ${retrigger.additionalSpins} additional spins`);
+                    });
+                }
+            } else {
+                console.log('❌ Failed to analyze the file');
+            }
+        } catch (error) {
+            console.log(`❌ Error analyzing file: ${error.message}`);
+        }
+    } else {
+        main();
+    }
 }
 
 export { analyzeChainFile, analyzeAllChainFiles, generateSummaryReport, main };

@@ -1,6 +1,6 @@
 import { BoardResult } from "../orchestration/rtp-controller";
 import { Round } from "../../statistic-calculator";
-import { defaultOdds } from "../../generator-definition";
+import { calculateFreeSpinAward } from "../utils/free-spin-utils";
 
 /**
  * Validation results for different validation types
@@ -63,7 +63,7 @@ export class ChainValidator {
                 totalFreeSpinsAwarded += freeSpinsAwarded;
 
                 // Validate award matches business rules
-                const expectedAward = this.calculateFreeSpinAward(scatterCount, isFreeSpin);
+                const expectedAward = calculateFreeSpinAward(scatterCount, isFreeSpin);
                 if (freeSpinsAwarded !== expectedAward) {
                     errors.push(
                         `Board ${index}: ${scatterCount} scatters in ${isFreeSpin ? 'free spin' : 'base game'} awarded ${freeSpinsAwarded}, expected ${expectedAward}`
@@ -164,7 +164,7 @@ export class ChainValidator {
             errors.push(`Invalid scatter count ${scatterCount} (max 30 positions)`);
         }
 
-        const expectedFreeSpins = this.calculateFreeSpinAward(scatterCount, isCurrentlyFreeSpin);
+        const expectedFreeSpins = calculateFreeSpinAward(scatterCount, isCurrentlyFreeSpin);
 
         if (isCurrentlyFreeSpin) {
             // Retrigger validation - use additionalOdds rules
@@ -357,27 +357,6 @@ export class ChainValidator {
         };
     }
 
-    /**
-     * Calculate free spin award based on scatter count and game mode
-     * Following guide requirements: initialOdds vs additionalOdds
-     */
-    private static calculateFreeSpinAward(scatterCount: number, isRetrigger: boolean): number {
-        if (scatterCount < 4) {
-            return 0; // No free spins awarded
-        }
-
-        if (isRetrigger) {
-            // Free spin retrigger mode - use additionalOdds from generator-definition
-            const retriggerRule = defaultOdds.freeSpins.additionalOdds.find(rule => scatterCount >= rule.count);
-            return retriggerRule ? retriggerRule.odds : 0;
-        } else {
-            // Base game mode - use initialOdds from generator-definition
-            const initialRule = defaultOdds.freeSpins.initialOdds.find(rule => scatterCount >= rule.count);
-            return initialRule ? initialRule.odds : 0;
-        }
-
-        return 0;
-    }
 
     /**
      * Validate a complete result chain before export

@@ -9,6 +9,7 @@ import { Volatility } from 'sc-slot-board-generator/lib/volatility';
 import { ChainValidator } from "../validation/chain-validator";
 import { BoardEnhancementOrchestrator } from "../win-booster/board-enhancement-orchestrator";
 import { EngagementMechanics } from "./custom-generator-configs";
+import { calculateFreeSpinAward } from "../utils/free-spin-utils";
 
 // Import board generator from the other package
 // Note: This will require adding sc-slot-board-generator as dependency
@@ -100,6 +101,7 @@ export class ResultChainOrchestrator {
             boardCount: config.boardCount,
             betSize: totalBetAmount,
             playerBudget: config.boardCount * totalBetAmount, // Legacy parameter (unused)
+            freeSpinRTP: this.engagementMechanics?.freeSpinRTP || defaultOdds.freeSpins.rtp || 0.3,
         });
 
         console.log(`🎯 Generating result chain: ${config.boardCount} boards, target RTP: ${(config.targetRTP * 100).toFixed(1)}%`);
@@ -306,7 +308,7 @@ export class ResultChainOrchestrator {
 
         // Execute free spins if awarded (following guide requirements)
         const scatterCount = this.countScatterSymbols(initialBoard.newBoard);
-        const freeSpinsAwarded = this.calculateFreeSpinAward(scatterCount, false); // Base game award
+        const freeSpinsAwarded = calculateFreeSpinAward(scatterCount, false); // Base game award
         
         // 🎯 FIX: Execute free spins if awarded
         if (freeSpinsAwarded > 0) {
@@ -811,27 +813,6 @@ export class ResultChainOrchestrator {
         return board.filter(symbol => symbol === 9).length;
     }
 
-    /**
-     * Calculate free spin award based on scatter count and game mode
-     * Following guide requirements: initialOdds vs additionalOdds
-     */
-    private calculateFreeSpinAward(scatterCount: number, isRetrigger: boolean): number {
-        if (scatterCount < 4) {
-            return 0; // No free spins awarded
-        }
-
-        if (isRetrigger) {
-            // Free spin retrigger mode - use additionalOdds from generator-definition
-            const retriggerRule = defaultOdds.freeSpins.additionalOdds.find(rule => scatterCount >= rule.count);
-            return retriggerRule ? retriggerRule.odds : 0;
-        } else {
-            // Base game mode - use initialOdds from generator-definition
-            const initialRule = defaultOdds.freeSpins.initialOdds.find(rule => scatterCount >= rule.count);
-            return initialRule ? initialRule.odds : 0;
-        }
-
-        return 0;
-    }
 
     /**
      * Create icons data in the expected format
@@ -938,7 +919,7 @@ export class ResultChainOrchestrator {
             
             // Check for retrigger using correct logic
             const freeSpinScatterCount = this.countScatterSymbols(freeSpinBoard.newBoard);
-            const retriggeredSpins = this.calculateFreeSpinAward(freeSpinScatterCount, true); // Retrigger mode
+            const retriggeredSpins = calculateFreeSpinAward(freeSpinScatterCount, true); // Retrigger mode
             
             // Count only actual cascades (tumbles where symbols were removed and board changed)
             const cascadeCount = freeSpinRound.settlementResult?.tumbles?.filter(tumble => {
@@ -1066,7 +1047,7 @@ export class ResultChainOrchestrator {
             
             // Check for retriggers
             const scatterCount = this.countScatterSymbols(freeSpinBoard.newBoard);
-            const retriggeredSpins = this.calculateFreeSpinAward(scatterCount, true); // Retrigger mode
+            const retriggeredSpins = calculateFreeSpinAward(scatterCount, true); // Retrigger mode
             additionalFreeSpins += retriggeredSpins;
             
             // Update multiplier (simplified)

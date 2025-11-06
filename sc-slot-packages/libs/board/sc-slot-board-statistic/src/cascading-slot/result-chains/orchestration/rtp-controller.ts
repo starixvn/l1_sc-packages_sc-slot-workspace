@@ -1,4 +1,5 @@
 import { sum, mean, map, filter } from "ramda";
+import { calculateFreeSpinAward } from "../utils/free-spin-utils";
 
 export interface RTPConfiguration {
     targetRTP: number; // e.g., 0.97 for 97%
@@ -6,6 +7,7 @@ export interface RTPConfiguration {
     boardCount: number; // e.g., 120 for 120 rounds
     betSize: number; // e.g., 1 coin per round
     playerBudget: number; // e.g., 100 coins
+    freeSpinRTP?: number; // Free spin RTP for accurate RTP calculation
 }
 
 export interface RTPResult {
@@ -86,6 +88,7 @@ export class RTPController {
         this.targetDistribution = this.calculateTargetDistribution();
     }
 
+
     /**
      * Calculate optimal win distribution for target RTP
      * Based on typical slot game mathematics
@@ -108,8 +111,29 @@ export class RTPController {
      */
     validateRTP(boardResults: BoardResult[]): RTPResult {
         const totalBets = boardResults.length * this.config.betSize;
-        // Use new totalWin field that includes board multipliers, fallback to totalTumbleWin for backward compatibility
-        const totalWins = sum(map((result) => result.totalWin || result.totalTumbleWin || 0, boardResults));
+
+        // Calculate total wins including executed free spin wins and estimated value of awarded free spins
+        let totalWins = 0;
+        for (const result of boardResults) {
+            const boardWin = result.totalWin || result.totalTumbleWin || 0;
+
+            // Add executed free spin wins (already included in boardWin)
+            totalWins += boardWin;
+
+            // Estimate value of awarded free spins that contribute to RTP
+            // Free spins cost the house money but provide expected RTP return
+            if (result.settlementResult?.freeSpins) {
+                const awardedFreeSpins = result.settlementResult.freeSpins.odds || 0;
+                if (awardedFreeSpins > 0) {
+                    // Free spins cost: awardedFreeSpins * betSize
+                    // Expected payout: awardedFreeSpins * betSize * freeSpinRTP
+                    const freeSpinCost = awardedFreeSpins * this.config.betSize;
+                    const expectedFreeSpinPayout = freeSpinCost * (this.config.freeSpinRTP || 0.3);
+                    totalWins += expectedFreeSpinPayout;
+                }
+            }
+        }
+
         const actualRTP = totalWins / totalBets;
 
         // Use totalWin for hit frequency calculation as well
@@ -182,8 +206,25 @@ export class RTPController {
         if (currentResults.length === 0) return 0;
 
         const totalBets = currentResults.length * this.config.betSize;
-        // Use new totalWin field for current RTP calculation
-        const totalWins = sum(map((result) => result.totalWin || result.totalTumbleWin || 0, currentResults));
+
+        // Calculate total wins including executed free spin wins and estimated value of awarded free spins
+        let totalWins = 0;
+        for (const result of currentResults) {
+            const boardWin = result.totalWin || result.totalTumbleWin || 0;
+
+            // Add executed free spin wins (already included in boardWin)
+            totalWins += boardWin;
+
+            // Estimate value of awarded free spins that contribute to RTP
+            if (result.settlementResult?.freeSpins) {
+                const awardedFreeSpins = result.settlementResult.freeSpins.odds || 0;
+                if (awardedFreeSpins > 0) {
+                    const freeSpinCost = awardedFreeSpins * this.config.betSize;
+                    const expectedFreeSpinPayout = freeSpinCost * (this.config.freeSpinRTP || 0.3);
+                    totalWins += expectedFreeSpinPayout;
+                }
+            }
+        }
 
         return totalWins / totalBets;
     }
@@ -197,8 +238,17 @@ export class RTPController {
         const boardsRemaining = this.config.boardCount - currentResults.length;
 
         if (rtpDeficit > 0 && boardsRemaining > 0) {
-            // Need to catch up - return larger win
-            const catchUpWin = (rtpDeficit * currentResults.length * this.config.betSize) / boardsRemaining;
+            // Need to catch up - but limit win size to prevent exceeding tolerance
+            const maxAllowedRTP = this.config.targetRTP + this.config.tolerance;
+            const maxWinPerBoard = (maxAllowedRTP * this.config.boardCount * this.config.betSize -
+                                   currentResults.length * this.config.betSize * currentRTP) / boardsRemaining;
+
+            // Ensure we don't request wins that would exceed tolerance even if all remaining boards win
+            const catchUpWin = Math.min(
+                (rtpDeficit * currentResults.length * this.config.betSize) / boardsRemaining,
+                maxWinPerBoard
+            );
+
             return Math.max(catchUpWin, this.config.betSize * 0.1); // Minimum 0.1x bet
         }
 

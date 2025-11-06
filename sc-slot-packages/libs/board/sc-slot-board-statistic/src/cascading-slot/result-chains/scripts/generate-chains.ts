@@ -20,26 +20,8 @@ import {
     getTotalBetConfigurations,
 } from './betSettings';
 import { PATTERN_CONFIGS } from '../orchestration/custom-generator-configs';
+import { calculateFreeSpinAward } from '../utils/free-spin-utils';
 import { defaultOdds } from '../../generator-definition';
-
-/**
- * Calculate free spin awards using actual configuration from generator-definition.ts
- */
-function calculateFreeSpinAward(scatterCount: number, isRetrigger: boolean): number {
-    if (scatterCount < 4) {
-        return 0; // No free spins awarded
-    }
-
-    if (isRetrigger) {
-        // Free spin retrigger mode - use additionalOdds from generator-definition
-        const retriggerRule = defaultOdds.freeSpins.additionalOdds.find(rule => scatterCount >= rule.count);
-        return retriggerRule ? retriggerRule.odds : 0;
-    } else {
-        // Base game mode - use initialOdds from generator-definition
-        const initialRule = defaultOdds.freeSpins.initialOdds.find(rule => scatterCount >= rule.count);
-        return initialRule ? initialRule.odds : 0;
-    }
-}
 
 // Available patterns for chain generation
 const AVAILABLE_PATTERNS = {
@@ -280,10 +262,10 @@ async function main() {
                                 name: chainName,
                                 patternType: pattern,
                                 boardCount: boardCount,
-                                targetRTP: config.targetRTP,
+                                targetRTP: chainResult.targetRTP,  // Use pattern-specific target RTP from generateChain result
                                 actualRTP: actualRTP,
-                                rtpVariance: Math.abs(actualRTP - config.targetRTP),
-                                meetsTargetRTP: Math.abs(actualRTP - config.targetRTP) <= config.tolerance,
+                                rtpVariance: chainResult.rtpResult.variance,  // Use RTP controller's variance calculation
+                                meetsTargetRTP: chainResult.rtpResult.meetsTarget,  // Use RTP controller's meets target result
                                 createdBy: config.createdBy,
                                 generatedAt: new Date().toISOString(),
                                 generationStats: chainResult.generationStats,
@@ -657,9 +639,9 @@ async function generateChain(patternType: string, boardCount: number, config: Ge
 
         const executionTime = Date.now() - startTime;
 
-        // Calculate metrics (RTP includes free spins as house contribution to total value)
-        let totalWagered = 0; // Total value provided (player bet + house free spin value)
-        let totalWon = 0;
+        // Use complete RTP result from orchestrator - no RTP calculations needed here
+        const rtpResult = chainResult.rtpResult; // Complete RTP analysis from RTP controller
+
         let featuresTriggered = 0;
         let freeSpinsWon = 0;
         let freeSpinsPlayed = 0;
@@ -673,23 +655,13 @@ async function generateChain(patternType: string, boardCount: number, config: Ge
         };
 
         chainResult.boards.forEach(board => {
-            // RTP calculation: Player wagering vs Total value received (wins + free spin bonuses)
-            const playerBet = totalBetAmount; // Only player-paid bets in wagering
-
-            // Count scatter symbols (symbol 9) and calculate free spins awarded using generator-definition rules
+            // Count scatter symbols for statistics only
             const scatterCount = board.board.filter(symbol => symbol === 9).length;
             const freeSpinCount = calculateFreeSpinAward(scatterCount, false); // Base game mode
-            const freeSpinValue = freeSpinCount * totalBetAmount; // Total value of free spins provided
-            const expectedFreeSpinPayout = freeSpinValue * freeSpinRTP; // Expected payout from free spins using pattern RTP
-
-            totalWagered += playerBet; // Only player contributions
             freeSpinsPlayed += freeSpinCount;
 
-            // Use new totalWin field that includes board multipliers and free spin wins, fallback to totalTumbleWin
+            // Use totalWin field for statistics
             const boardWin = board.totalWin || board.totalTumbleWin || 0;
-            // Add both actual wins AND expected payout from house-provided free spins
-            const totalValueReceived = boardWin + expectedFreeSpinPayout;
-            totalWon += totalValueReceived;
 
             if (boardWin === 0) {
                 winDistribution.losses++;
@@ -716,16 +688,14 @@ async function generateChain(patternType: string, boardCount: number, config: Ge
             }
         });
 
-        const actualRTP = totalWagered > 0 ? totalWon / totalWagered : 0;
-        const rtpVariance = Math.abs(actualRTP - targetRTP);  // Use pattern-specific RTP
-        const meetsTarget = rtpVariance <= tolerance;  // Use pattern-specific tolerance
-
-        // Build comprehensive result
+        // Build comprehensive result - RTP calculations handled by RTP controller
         return {
             success: true,
-            actualRTP,
-            rtpVariance,
-            meetsTarget,
+            actualRTP: rtpResult.actualRTP,
+            rtpVariance: rtpResult.variance,
+            meetsTarget: rtpResult.meetsTarget,
+            rtpResult, // Include full RTP result for metadata
+            targetRTP, // Include pattern-specific target RTP
             boards: chainResult.boards,
             tumbleStats: {
                 totalTumbles: cascadeCount,
@@ -737,12 +707,12 @@ async function generateChain(patternType: string, boardCount: number, config: Ge
             generationStats: {
                 attempts: (chainResult as any).generationAttempts || 1,
                 duration: executionTime,
-                finalRTP: actualRTP,
-                targetAchieved: meetsTarget
+                finalRTP: rtpResult.actualRTP,
+                targetAchieved: rtpResult.meetsTarget
             },
             metrics: {
-                totalWagered,
-                totalWon,
+                totalWagered: rtpResult.totalBets,
+                totalWon: rtpResult.totalWins,
                 winDistribution,
                 featuresTriggered,
                 freeSpinsWon,
