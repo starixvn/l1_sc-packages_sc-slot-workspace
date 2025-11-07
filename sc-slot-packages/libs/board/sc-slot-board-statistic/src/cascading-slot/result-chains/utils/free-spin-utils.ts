@@ -22,3 +22,55 @@ export function calculateFreeSpinAward(scatterCount: number, isRetrigger: boolea
         return initialRule ? initialRule.odds : 0;
     }
 }
+
+/**
+ * Calculate total house expenditure for free spins (cost + expected RTP payout)
+ * @param awardedFreeSpins - Number of free spins awarded
+ * @param betSize - Bet amount per spin
+ * @param freeSpinRTP - Free spin RTP percentage (default: 0.3 for 30%)
+ * @returns Total expected expenditure by the house
+ */
+export function calculateTotalHouseExpenditure(
+    awardedFreeSpins: number,
+    betSize: number,
+    freeSpinRTP: number = 0.3
+): number {
+    if (awardedFreeSpins <= 0) {
+        return 0;
+    }
+
+    // Free spin cost = awarded free spins × bet size
+    const freeSpinCost = awardedFreeSpins * betSize;
+
+    // Expected RTP payout = free spin cost × free spin RTP
+    const expectedFreeSpinPayout = freeSpinCost * freeSpinRTP;
+
+    // Total house expenditure = cost of free spins + expected RTP payout from those spins
+    return freeSpinCost + expectedFreeSpinPayout;
+}
+
+/**
+ * Calculate free spin cost component only
+ * @param awardedFreeSpins - Number of free spins awarded
+ * @param betSize - Bet amount per spin
+ * @returns Cost to provide the free spins
+ */
+export function calculateFreeSpinCost(awardedFreeSpins: number, betSize: number): number {
+    return awardedFreeSpins * betSize;
+}
+
+/**
+ * Calculate expected free spin payout component only
+ * @param awardedFreeSpins - Number of free spins awarded
+ * @param betSize - Bet amount per spin
+ * @param freeSpinRTP - Free spin RTP percentage (default: 0.3 for 30%)
+ * @returns Expected RTP payout from free spins
+ */
+export function calculateExpectedFreeSpinPayout(
+    awardedFreeSpins: number,
+    betSize: number,
+    freeSpinRTP: number = 0.3
+): number {
+    const freeSpinCost = calculateFreeSpinCost(awardedFreeSpins, betSize);
+    return freeSpinCost * freeSpinRTP;
+}
