@@ -54,6 +54,15 @@ interface ChainAnalysis {
         totalFreeSpinsAwarded: number;
         retriggersCount: number;
         totalRetriggerSpins: number;
+        totalFreeSpinCost: number; // Cost of awarded free spins to house
+        expectedFreeSpinPayout: number; // Expected RTP return from free spins
+    };
+    betData?: {
+        betLevel?: number;
+        coinValue?: number;
+        betMultiplier?: number;
+        baseBetAmount?: number;
+        totalBetAmount?: number;
     };
 }
 
@@ -65,6 +74,8 @@ interface SummaryReport {
         totalFreeSpinsAwarded: number;
         totalRetriggers: number;
         totalRetriggerSpins: number;
+        totalFreeSpinCost: number; // Total cost of awarded free spins to house
+        expectedFreeSpinPayout: number; // Expected RTP return from free spins
     };
     scatterDistribution: Record<number, number>;
     averagesPerChain: {
@@ -72,6 +83,8 @@ interface SummaryReport {
         freeSpinsPerChain: number;
         retriggersPerChain: number;
         retriggerSpinsPerChain: number;
+        freeSpinCostPerChain: number;
+        expectedFreeSpinPayoutPerChain: number;
     };
     freeSpinAwardPatterns: {
         standardAward: number;
@@ -81,6 +94,15 @@ interface SummaryReport {
 }
 
 interface ChainData {
+    metadata?: {
+        betData?: {
+            betLevel?: number;
+            coinValue?: number;
+            betMultiplier?: number;
+            baseBetAmount?: number;
+            totalBetAmount?: number;
+        };
+    };
     boards: Array<{
         isFreeSpin?: boolean;
         settlementResult?: {
@@ -101,7 +123,9 @@ function analyzeChainFile(filePath: string): ChainAnalysis | null {
     try {
         const data: ChainData = JSON.parse(fs.readFileSync(filePath, 'utf8'));
         const boards = data.boards || [];
-        
+        const betData = data.metadata?.betData;
+        const totalBetAmount = betData?.totalBetAmount || 1; // Default to 1 if not found
+
         const analysis: ChainAnalysis = {
             fileName: path.basename(filePath),
             totalBoards: boards.length,
@@ -112,8 +136,11 @@ function analyzeChainFile(filePath: string): ChainAnalysis | null {
                 triggersCount: 0,
                 totalFreeSpinsAwarded: 0,
                 retriggersCount: 0,
-                totalRetriggerSpins: 0
-            }
+                totalRetriggerSpins: 0,
+                totalFreeSpinCost: 0, // Cost of awarded free spins to house
+                expectedFreeSpinPayout: 0 // Expected RTP return from free spins
+            },
+            betData
         };
 
         let currentFreeSpinSequence: FreeSpinSequence | null = null;
@@ -138,6 +165,14 @@ function analyzeChainFile(filePath: string): ChainAnalysis | null {
                 analysis.freeSpinTriggers.push(trigger);
                 analysis.statistics.triggersCount++;
                 analysis.statistics.totalFreeSpinsAwarded += freeSpinsAwarded;
+
+                // Calculate free spin costs (same as RTP controller)
+                if (freeSpinsAwarded > 0) {
+                    const freeSpinCost = freeSpinsAwarded * totalBetAmount;
+                    const expectedFreeSpinPayout = freeSpinCost * 0.3; // Free spin RTP = 30%
+                    analysis.statistics.totalFreeSpinCost += freeSpinCost;
+                    analysis.statistics.expectedFreeSpinPayout += expectedFreeSpinPayout;
+                }
                 
                 // Start tracking free spin sequence
                 currentFreeSpinSequence = {
@@ -175,6 +210,14 @@ function analyzeChainFile(filePath: string): ChainAnalysis | null {
                     currentFreeSpinSequence.totalFreeSpins += additionalSpins;
                     analysis.statistics.retriggersCount++;
                     analysis.statistics.totalRetriggerSpins += additionalSpins;
+
+                    // Calculate retrigger costs (same as RTP controller)
+                    if (additionalSpins > 0) {
+                        const retriggerCost = additionalSpins * totalBetAmount;
+                        const expectedRetriggerPayout = retriggerCost * 0.3; // Free spin RTP = 30%
+                        analysis.statistics.totalFreeSpinCost += retriggerCost;
+                        analysis.statistics.expectedFreeSpinPayout += expectedRetriggerPayout;
+                    }
                 }
 
                 currentFreeSpinSequence.freeSpinBoards.push(freeSpinBoard);
@@ -228,14 +271,18 @@ function generateSummaryReport(analyses: ChainAnalysis[]): SummaryReport {
             totalTriggers: analyses.reduce((sum, a) => sum + a.statistics.triggersCount, 0),
             totalFreeSpinsAwarded: analyses.reduce((sum, a) => sum + a.statistics.totalFreeSpinsAwarded, 0),
             totalRetriggers: analyses.reduce((sum, a) => sum + a.statistics.retriggersCount, 0),
-            totalRetriggerSpins: analyses.reduce((sum, a) => sum + a.statistics.totalRetriggerSpins, 0)
+            totalRetriggerSpins: analyses.reduce((sum, a) => sum + a.statistics.totalRetriggerSpins, 0),
+            totalFreeSpinCost: analyses.reduce((sum, a) => sum + a.statistics.totalFreeSpinCost, 0),
+            expectedFreeSpinPayout: analyses.reduce((sum, a) => sum + a.statistics.expectedFreeSpinPayout, 0)
         },
         scatterDistribution: { 4: 0, 5: 0, 6: 0 },
         averagesPerChain: {
             triggersPerChain: 0,
             freeSpinsPerChain: 0,
             retriggersPerChain: 0,
-            retriggerSpinsPerChain: 0
+            retriggerSpinsPerChain: 0,
+            freeSpinCostPerChain: 0,
+            expectedFreeSpinPayoutPerChain: 0
         },
         freeSpinAwardPatterns: {
             standardAward: 15,
@@ -258,7 +305,9 @@ function generateSummaryReport(analyses: ChainAnalysis[]): SummaryReport {
             triggersPerChain: summary.freeSpinStatistics.totalTriggers / summary.totalChainFiles,
             freeSpinsPerChain: summary.freeSpinStatistics.totalFreeSpinsAwarded / summary.totalChainFiles,
             retriggersPerChain: summary.freeSpinStatistics.totalRetriggers / summary.totalChainFiles,
-            retriggerSpinsPerChain: summary.freeSpinStatistics.totalRetriggerSpins / summary.totalChainFiles
+            retriggerSpinsPerChain: summary.freeSpinStatistics.totalRetriggerSpins / summary.totalChainFiles,
+            freeSpinCostPerChain: summary.freeSpinStatistics.totalFreeSpinCost / summary.totalChainFiles,
+            expectedFreeSpinPayoutPerChain: summary.freeSpinStatistics.expectedFreeSpinPayout / summary.totalChainFiles
         };
     }
 
@@ -294,7 +343,10 @@ function main(): SummaryReport {
     console.log(`Total Free Spin Triggers: ${summary.freeSpinStatistics.totalTriggers}`);
     console.log(`Total Free Spins Awarded: ${summary.freeSpinStatistics.totalFreeSpinsAwarded}`);
     console.log(`Total Retriggers: ${summary.freeSpinStatistics.totalRetriggers}`);
-    console.log(`Total Retrigger Spins: ${summary.freeSpinStatistics.totalRetriggerSpins}\n`);
+    console.log(`Total Retrigger Spins: ${summary.freeSpinStatistics.totalRetriggerSpins}`);
+    console.log(`Total Free Spin Cost: $${summary.freeSpinStatistics.totalFreeSpinCost.toFixed(2)}`);
+    console.log(`Expected Free Spin Payout: $${summary.freeSpinStatistics.expectedFreeSpinPayout.toFixed(2)}`);
+    console.log(`Total House Expenditure: $${(summary.freeSpinStatistics.totalFreeSpinCost + summary.freeSpinStatistics.expectedFreeSpinPayout).toFixed(2)}\n`);
 
     console.log('🎯 FREE SPIN AWARD RULES (Current Configuration)');
     console.log('------------------------------------------------');
@@ -317,7 +369,11 @@ function main(): SummaryReport {
     console.log(`Free Spin Triggers: ${summary.averagesPerChain.triggersPerChain?.toFixed(2) || 0}`);
     console.log(`Free Spins Awarded: ${summary.averagesPerChain.freeSpinsPerChain?.toFixed(2) || 0}`);
     console.log(`Retriggers: ${summary.averagesPerChain.retriggersPerChain?.toFixed(2) || 0}`);
-    console.log(`Retrigger Spins: ${summary.averagesPerChain.retriggerSpinsPerChain?.toFixed(2) || 0}\n`);
+    console.log(`Retrigger Spins: ${summary.averagesPerChain.retriggerSpinsPerChain?.toFixed(2) || 0}`);
+    const totalHouseExpenditurePerChain = (summary.averagesPerChain.freeSpinCostPerChain || 0) + (summary.averagesPerChain.expectedFreeSpinPayoutPerChain || 0);
+    console.log(`Free Spin Cost: $${summary.averagesPerChain.freeSpinCostPerChain?.toFixed(2) || 0}`);
+    console.log(`Expected Free Spin Payout: $${summary.averagesPerChain.expectedFreeSpinPayoutPerChain?.toFixed(2) || 0}`);
+    console.log(`Total House Expenditure: $${totalHouseExpenditurePerChain.toFixed(2)}\n`);
 
     console.log('🔍 KEY FINDINGS');
     console.log('---------------');
@@ -366,6 +422,12 @@ if (import.meta.url === `file://${process.argv[1]}` || process.argv[1]?.endsWith
                 console.log(`Total Free Spins Awarded: ${analysis.statistics.totalFreeSpinsAwarded}`);
                 console.log(`Retriggers: ${analysis.statistics.retriggersCount}`);
                 console.log(`Total Retrigger Spins: ${analysis.statistics.totalRetriggerSpins}`);
+                console.log(`Total Free Spin Cost: $${analysis.statistics.totalFreeSpinCost.toFixed(2)}`);
+                console.log(`Expected Free Spin Payout: $${analysis.statistics.expectedFreeSpinPayout.toFixed(2)}`);
+                console.log(`Total House Expenditure: $${(analysis.statistics.totalFreeSpinCost + analysis.statistics.expectedFreeSpinPayout).toFixed(2)}`);
+                if (analysis.betData?.totalBetAmount) {
+                    console.log(`Bet Amount: $${analysis.betData.totalBetAmount.toFixed(2)}`);
+                }
 
                 console.log('\n🎯 FREE SPIN TRIGGER DETAILS');
                 console.log('---------------------------');
