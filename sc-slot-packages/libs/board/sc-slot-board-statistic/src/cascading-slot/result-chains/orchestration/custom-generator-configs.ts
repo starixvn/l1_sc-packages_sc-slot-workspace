@@ -13,6 +13,7 @@ export interface EngagementMechanics {
     targetHitFrequency?: number;       // 0.0-1.0 (e.g., 0.50 for 50%)
     premiumSymbolBoost?: number;       // Multiplier for symbols 7-8 weight (e.g., 1.8)
     scatterBoost?: number;             // Multiplier for symbol 9 weight (e.g., 2.5)
+    scatterWinRewards?: boolean;       // Enable scatter count-based win rewards from generator-definition.ts
     cascadeTarget?: number;            // Target tumble count (e.g., 3-4)
     nearMissMode?: boolean;            // Enable 6-7 symbol placement
 }
@@ -94,8 +95,8 @@ export const PATTERN_CONFIGS: { [key: string]: PatternBoardConfig } = {
 
     // DISCOVERY - Explorers want variety and gradual feature reveals
     discovery: {
-        name: "Discovery Pattern", 
-        description: "Feature-rich with lower base RTP compensated by 2.5x more free spins",
+        name: "Discovery Pattern",
+        description: "Feature-rich exploration with 2.5x boosted scatter triggers for frequent free spin discoveries. Lower base RTP (96%) is offset by enhanced scatter frequency creating engaging feature reveals and scatter-based win rewards.",
         riskProfile: 'explorer',
         boardSettings: {
             reels: 6,
@@ -109,10 +110,11 @@ export const PATTERN_CONFIGS: { [key: string]: PatternBoardConfig } = {
         },
         volatility: Volatility.MediumLow,
         engagementMechanics: {
-            targetRTP: 0.96,              // Lower 96% RTP
+            targetRTP: 0.96,              // Lower 96% RTP compensated by feature frequency
             rtpTolerance: 0.01,           // ±1%
-            freeSpinRTP: 0.3,            // Lower 30% RTP for free spins (compensates for frequency)
-            scatterBoost: 2.5,            // 2.5x scatter frequency compensates
+            freeSpinRTP: 0.3,            // 30% RTP for free spins
+            scatterBoost: 2.5,            // 2.5x more scatters for frequent discoveries
+            scatterWinRewards: true,      // Enable scatter count-based win rewards from generator-definition.ts
             cascadeTarget: 3.5,           // 3-4 tumbles average
         },
     },
@@ -224,6 +226,7 @@ export function createPatternSpecificBoardGeneratorFactory(patternType: string, 
         .detailIf(!!mechanics?.cascadeTarget, 'Cascade Target', `${mechanics?.cascadeTarget} tumbles`)
         .detailIf(!!mechanics?.premiumSymbolBoost, 'Premium Symbol Boost', `${mechanics?.premiumSymbolBoost}x`)
         .detailIf(!!mechanics?.scatterBoost, 'Scatter Boost', `${mechanics?.scatterBoost}x`)
+        .detailIf(!!mechanics?.scatterWinRewards, 'Scatter Win Rewards', 'Enabled (from generator-definition.ts)')
         .build();
     
     return {

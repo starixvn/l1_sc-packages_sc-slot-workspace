@@ -1,5 +1,5 @@
 import { sum, mean, map, filter } from "ramda";
-import { calculateFreeSpinAward } from "../utils/free-spin-utils";
+import { calculateFreeSpinAward, calculateTotalHouseExpenditure } from "../utils/free-spin-utils";
 
 export interface RTPConfiguration {
     targetRTP: number; // e.g., 0.97 for 97%
@@ -120,16 +120,17 @@ export class RTPController {
             // Add executed free spin wins (already included in boardWin)
             totalWins += boardWin;
 
-            // Estimate value of awarded free spins that contribute to RTP
-            // Free spins cost the house money but provide expected RTP return
+            // Include total house expenditure for awarded free spins in RTP calculation
+            // Total house expenditure = free spin cost + expected RTP payout
             if (result.settlementResult?.freeSpins) {
                 const awardedFreeSpins = result.settlementResult.freeSpins.odds || 0;
                 if (awardedFreeSpins > 0) {
-                    // Free spins cost: awardedFreeSpins * betSize
-                    // Expected payout: awardedFreeSpins * betSize * freeSpinRTP
-                    const freeSpinCost = awardedFreeSpins * this.config.betSize;
-                    const expectedFreeSpinPayout = freeSpinCost * (this.config.freeSpinRTP || 0.3);
-                    totalWins += expectedFreeSpinPayout;
+                    const totalHouseExpenditure = calculateTotalHouseExpenditure(
+                        awardedFreeSpins,
+                        this.config.betSize,
+                        this.config.freeSpinRTP || 0.3
+                    );
+                    totalWins += totalHouseExpenditure;
                 }
             }
         }
@@ -215,13 +216,17 @@ export class RTPController {
             // Add executed free spin wins (already included in boardWin)
             totalWins += boardWin;
 
-            // Estimate value of awarded free spins that contribute to RTP
+            // Include total house expenditure for awarded free spins in RTP calculation
+            // Total house expenditure = free spin cost + expected RTP payout
             if (result.settlementResult?.freeSpins) {
                 const awardedFreeSpins = result.settlementResult.freeSpins.odds || 0;
                 if (awardedFreeSpins > 0) {
-                    const freeSpinCost = awardedFreeSpins * this.config.betSize;
-                    const expectedFreeSpinPayout = freeSpinCost * (this.config.freeSpinRTP || 0.3);
-                    totalWins += expectedFreeSpinPayout;
+                    const totalHouseExpenditure = calculateTotalHouseExpenditure(
+                        awardedFreeSpins,
+                        this.config.betSize,
+                        this.config.freeSpinRTP || 0.3
+                    );
+                    totalWins += totalHouseExpenditure;
                 }
             }
         }

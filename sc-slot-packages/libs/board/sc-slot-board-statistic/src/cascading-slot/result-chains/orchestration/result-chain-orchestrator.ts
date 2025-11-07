@@ -323,7 +323,14 @@ export class ResultChainOrchestrator {
         // 🎯 UPDATED: Calculate board multiplier sum using accumulated values from tumbles (pure function)
         const boardMultiplierSum = ResultChainOrchestrator.calculateMultiplierSum(finalTumbleMultipliers);
         const rawTumbleWin = totalWin + freeSpinWins; // Raw wins before multipliers
-        const finalTotalWin = boardMultiplierSum > 0 ? rawTumbleWin * boardMultiplierSum : rawTumbleWin;
+
+        // 🎯 SCATTER WIN REWARDS: Add scatter-based payouts if enabled
+        let scatterWinReward = 0;
+        if (this.engagementMechanics?.scatterWinRewards && scatterCount >= 4) {
+            scatterWinReward = this.calculateScatterWinReward(scatterCount, round.coinValue * round.betLevel * round.betMultiplier);
+        }
+
+        const finalTotalWin = boardMultiplierSum > 0 ? (rawTumbleWin + scatterWinReward) * boardMultiplierSum : (rawTumbleWin + scatterWinReward);
         
         const boardResult = {
             board: initialBoard.newBoard,
@@ -1205,5 +1212,27 @@ export class ResultChainOrchestrator {
         };
 
         return JSON.stringify(exportData, null, 2);
+    }
+
+    /**
+     * Calculate scatter-based win rewards using payout rules from generator-definition.ts
+     * @param scatterCount - Number of scatter symbols on the board
+     * @param betAmount - Total bet amount for the round
+     * @returns Win reward amount for scatter count
+     */
+    private calculateScatterWinReward(scatterCount: number, betAmount: number): number {
+        // Get scatter payout rules from generator-definition
+        const scatterSymbol = defaultOdds.normalSymbols.find(symbol => symbol.symbol === 9);
+        if (!scatterSymbol) return 0;
+
+        // Find the applicable payout rule for this scatter count
+        const payoutRule = scatterSymbol.payout.find(rule =>
+            scatterCount >= rule.from && scatterCount <= rule.to
+        );
+
+        if (!payoutRule) return 0;
+
+        // Calculate win amount: odds * betAmount
+        return payoutRule.odds * betAmount;
     }
 }
