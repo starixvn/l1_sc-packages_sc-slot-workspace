@@ -237,8 +237,8 @@ export const defaultOdds = {
     {
       symbol: 9,
       payout: [
-        { from: 4, to: 4, odds: 60 },
-        { from: 5, to: 5, odds: 100 },
+        { from: 4, to: 4, odds: 60 }, 
+        { from: 5, to: 5, odds: 100 }, // odds 100, but payout is 51?!? 
         { from: 6, to: 30, odds: 2000 },
       ],
     },

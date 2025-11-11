@@ -315,10 +315,7 @@ export class ResultChainOrchestrator {
         const boardResult = {
             board: initialBoard.newBoard,
             multipliers: finalTumbleMultipliers, // 🎯 FIXED: Use final BoardGenerator multiplier state
-            payoutResult: undefined,
             cascadeCount: tumbles.length,
-            totalCascadeWin: totalWin,
-            isFreeSpin: round.freeSpin || false,
             accumulatedMultiplier: round.multiplier || 0,
             settlementResult: {
                 tumbles: tumbles,

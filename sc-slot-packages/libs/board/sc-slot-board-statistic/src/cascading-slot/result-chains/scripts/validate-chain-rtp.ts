@@ -35,7 +35,6 @@ interface ChainMetadata {
 interface ChainBoard {
     board: number[];
     multipliers: number[];
-    isFreeSpin: boolean;
     accumulatedMultiplier: number;
     remainingFreeSpins: number;
     freeSpinsPlayed: number;
@@ -128,21 +127,13 @@ function validateChainRTP(filePath: string): RTPValidationResult | null {
         let totalRetriggerSpins = 0;
 
     boards.forEach(board => {
-        // Count free spin triggers (base game awards)
-        if (!board.isFreeSpin && board.settlementResult?.freeSpins?.odds > 0) {
+        // Count free spin triggers (base game awards only, since free spin execution is removed)
+        if (board.settlementResult?.freeSpins?.odds > 0) {
             const awardedSpins = board.settlementResult.freeSpins.odds;
             totalFreeSpinCost += calculateFreeSpinCost(awardedSpins, metadata.betData.totalBetAmount);
             expectedFreeSpinPayout += calculateExpectedFreeSpinPayout(awardedSpins, metadata.betData.totalBetAmount);
             freeSpinTriggers++;
             totalFreeSpinsAwarded += awardedSpins;
-        }
-
-        // Count retrigger spins (additional free spins during free spin mode)
-        if (board.isFreeSpin && board.settlementResult?.additionalFreeSpins?.odds > 0) {
-            const additionalSpins = board.settlementResult.additionalFreeSpins.odds;
-            totalFreeSpinCost += calculateFreeSpinCost(additionalSpins, metadata.betData.totalBetAmount);
-            expectedFreeSpinPayout += calculateExpectedFreeSpinPayout(additionalSpins, metadata.betData.totalBetAmount);
-            totalRetriggerSpins += additionalSpins;
         }
     });
 

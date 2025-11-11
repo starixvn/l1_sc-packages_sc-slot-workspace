@@ -22,35 +22,11 @@ export interface RTPResult {
 export interface BoardResult {
     board: number[];
     multipliers: number[];
-    payoutResult?: any; // Will be populated by settlement
     cascadeCount: number;
-    totalCascadeWin: number; // DEPRECATED: Use totalTumbleWin instead
-    isFreeSpin: boolean;
     accumulatedMultiplier: number;
-    remainingFreeSpins: number; // Will be 0 when free spins are executed immediately
-    freeSpinsPlayed?: number; // Track how many free spins were actually played
-    freeSpinWins?: number; // Track separate contribution from free spins
-    // Full free spin board sequence for complete player experience
-    freeSpinBoards?: Array<{
-        board: number[];
-        multipliers: number[];
-        isFreeSpin: boolean;  // Required property from guide
-        accumulatedMultiplier: number;  // Total accumulated multiplier
-        remainingFreeSpins: number;  // Free spins left after this round
-        freeSpinsPlayed: number;  // Number of free spins played so far
-        freeSpinWins: number;  // Number of winning free spin rounds
-        cascadeCount: number;
-        win: number;
-        isRetrigger: boolean;
-        retriggeredSpins?: number;
-        spinsRemaining: number;
-        spinIndex: number; // 1, 2, 3, etc.
-        settlementResult?: any;
-    }>;
-    // Settlement-specific data
     settlementResult?: {
         tumbles: {
-            icons: Record<string, { count: number; odds: number }>;
+            icons: Record<string, { count: number; odds: number; win: number }>;
             win: number;
             originalBoard: string;
             newBoard: string;

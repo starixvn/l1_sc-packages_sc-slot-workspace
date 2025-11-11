@@ -284,7 +284,6 @@ async function main() {
                             boards: chainResult.boards.map(board => ({
                                 board: board.board,
                                 multipliers: board.multipliers,
-                                isFreeSpin: board.isFreeSpin,
                                 accumulatedMultiplier: board.accumulatedMultiplier,
                                 settlementResult: board.settlementResult,
                                 totalTumbleWin: board.totalTumbleWin || 0,        // Raw tumble wins

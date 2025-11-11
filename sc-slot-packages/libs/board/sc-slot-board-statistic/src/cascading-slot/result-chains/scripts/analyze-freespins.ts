@@ -110,7 +110,6 @@ interface ChainData {
         };
     };
     boards: Array<{
-        isFreeSpin?: boolean;
         settlementResult?: {
             freeSpins?: {
                 count: number;
@@ -152,8 +151,8 @@ function analyzeChainFile(filePath: string): ChainAnalysis | null {
         let currentFreeSpinSequence: FreeSpinSequence | null = null;
 
         boards.forEach((board, index) => {
-            // Check for free spin triggers in base game
-            if (!board.isFreeSpin && board.settlementResult?.freeSpins?.count && board.settlementResult.freeSpins.count > 0) {
+            // Check for free spin triggers in base game (all boards are base game since free spin execution is removed)
+            if (board.settlementResult?.freeSpins?.count && board.settlementResult.freeSpins.count > 0) {
                 const scatterCount = board.settlementResult.freeSpins.count;
                 const freeSpinsAwarded = calculateFreeSpinAward(scatterCount, false);
                 
@@ -188,48 +187,7 @@ function analyzeChainFile(filePath: string): ChainAnalysis | null {
                 };
             }
 
-            // Track free spin boards
-            if (board.isFreeSpin && currentFreeSpinSequence) {
-                const freeSpinBoard: FreeSpinBoard = {
-                    boardIndex: index,
-                    spinIndex: board.freeSpinsPlayed || 0,
-                    remainingSpins: board.remainingFreeSpins || 0,
-                    accumulatedMultiplier: board.accumulatedMultiplier || 0,
-                    win: board.totalWin || 0
-                };
-
-                // Check for retriggers during free spins
-                const minRetriggerCount = defaultOdds.freeSpins.additionalOdds[0]?.count || 3;
-                if (board.settlementResult?.freeSpins?.count && board.settlementResult.freeSpins.count >= minRetriggerCount) {
-                    const additionalSpins = calculateFreeSpinAward(board.settlementResult.freeSpins.count, true);
-                    const retrigger: Retrigger = {
-                        boardIndex: index,
-                        scatterCount: board.settlementResult.freeSpins.count,
-                        additionalSpins: additionalSpins,
-                        spinNumber: board.freeSpinsPlayed || 0
-                    };
-                    
-                    analysis.retriggers.push(retrigger);
-                    currentFreeSpinSequence.retriggers.push(retrigger);
-                    currentFreeSpinSequence.totalFreeSpins += additionalSpins;
-                    analysis.statistics.retriggersCount++;
-                    analysis.statistics.totalRetriggerSpins += additionalSpins;
-
-                    // Calculate retrigger costs (same as RTP controller)
-                    if (additionalSpins > 0) {
-                        analysis.statistics.totalFreeSpinCost += calculateFreeSpinCost(additionalSpins, totalBetAmount);
-                        analysis.statistics.expectedFreeSpinPayout += calculateExpectedFreeSpinPayout(additionalSpins, totalBetAmount);
-                    }
-                }
-
-                currentFreeSpinSequence.freeSpinBoards.push(freeSpinBoard);
-
-                // End of free spin sequence
-                if (board.remainingFreeSpins === 0) {
-                    analysis.freeSpinSequences.push(currentFreeSpinSequence);
-                    currentFreeSpinSequence = null;
-                }
-            }
+            // Note: Free spin board tracking removed since free spin execution is disabled
         });
 
         return analysis;

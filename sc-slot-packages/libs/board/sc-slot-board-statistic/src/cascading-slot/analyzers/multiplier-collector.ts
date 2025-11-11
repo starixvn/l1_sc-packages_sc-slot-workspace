@@ -23,7 +23,6 @@ interface MultiplierSpinData {
   betAmount: number;
   coinValue: number;
   betLevel: number;
-  isFreeSpin: boolean;
 }
 
 interface CollectorResults {
@@ -84,7 +83,6 @@ function collectMultiplierSpins(
         betAmount: round.totalAmount!,
         coinValue: round.coinValue!,
         betLevel: round.betLevel!,
-        isFreeSpin: round.freeSpin || false,
       };
       
       multiplierSpins.push(spinData);

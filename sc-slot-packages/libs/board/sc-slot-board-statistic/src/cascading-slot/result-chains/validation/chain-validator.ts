@@ -57,29 +57,19 @@ export class ChainValidator {
 
             const scatterCount = board.settlementResult.freeSpins.count;
             const freeSpinsAwarded = board.settlementResult.freeSpins.odds;
-            const isFreeSpin = board.isFreeSpin;
 
             if (scatterCount > 0) {
                 totalFreeSpinsAwarded += freeSpinsAwarded;
 
-                // Validate award matches business rules
-                const expectedAward = calculateFreeSpinAward(scatterCount, isFreeSpin);
+                // Validate award matches business rules (all boards are base game since free spin execution is removed)
+                const expectedAward = calculateFreeSpinAward(scatterCount, false);
                 if (freeSpinsAwarded !== expectedAward) {
                     errors.push(
-                        `Board ${index}: ${scatterCount} scatters in ${isFreeSpin ? 'free spin' : 'base game'} awarded ${freeSpinsAwarded}, expected ${expectedAward}`
+                        `Board ${index}: ${scatterCount} scatters awarded ${freeSpinsAwarded}, expected ${expectedAward}`
                     );
                 }
 
-                if (isFreeSpin) {
-                    retriggerFreeSpinAwards++;
-                } else {
-                    baseGameFreeSpinAwards++;
-                }
-            }
-
-            // Count free spin boards
-            if (board.freeSpinBoards) {
-                totalFreeSpinBoards += board.freeSpinBoards.length;
+                baseGameFreeSpinAwards++;
             }
         });
 
@@ -122,7 +112,7 @@ export class ChainValidator {
     /**
      * Validate free spin awards follow correct business rules from guide
      */
-    static validateFreeSpinAwards(boardResult: BoardResult, isCurrentlyFreeSpin: boolean): FreeSpinValidationResult {
+    static validateFreeSpinAwards(boardResult: BoardResult): FreeSpinValidationResult {
         const errors: string[] = [];
         const warnings: string[] = [];
         
@@ -135,7 +125,7 @@ export class ChainValidator {
                 scatterCount: 0,
                 freeSpinsAwarded: 0,
                 expectedFreeSpins: 0,
-                isRetrigger: isCurrentlyFreeSpin
+                isRetrigger: false
             };
         }
 
@@ -155,7 +145,7 @@ export class ChainValidator {
                 scatterCount,
                 freeSpinsAwarded,
                 expectedFreeSpins: 0,
-                isRetrigger: isCurrentlyFreeSpin
+                isRetrigger: false
             };
         }
 
@@ -164,42 +154,18 @@ export class ChainValidator {
             errors.push(`Invalid scatter count ${scatterCount} (max 30 positions)`);
         }
 
-        const expectedFreeSpins = calculateFreeSpinAward(scatterCount, isCurrentlyFreeSpin);
+        const expectedFreeSpins = calculateFreeSpinAward(scatterCount, false); // All boards are base game
 
-        if (isCurrentlyFreeSpin) {
-            // Retrigger validation - use additionalOdds rules
-            if (scatterCount >= 4) {
-                if (freeSpinsAwarded !== 5) {
-                    errors.push(
-                        `${scatterCount} scatters during free spin should award 5 additional free spins, got ${freeSpinsAwarded}`
-                    );
-                } else {
-                    console.log(`✅ Free spin retrigger validation passed: ${scatterCount} scatters → 5 additional free spins`);
-                }
-            } else {
-                if (freeSpinsAwarded !== 0) {
-                    errors.push(
-                        `${scatterCount} scatters (< 4) should award 0 free spins, got ${freeSpinsAwarded}`
-                    );
-                }
-            }
-        } else {
-            // Base game validation - use initialOdds rules
-            if (freeSpinsAwarded !== expectedFreeSpins) {
-                errors.push(
-                    `${scatterCount} scatters should award ${expectedFreeSpins} free spins, got ${freeSpinsAwarded}`
-                );
-            } else if (expectedFreeSpins > 0) {
-                console.log(`✅ Free spin base game validation passed: ${scatterCount} scatters → ${expectedFreeSpins} free spins`);
-            }
+        // Base game validation only (free spin execution removed)
+        if (freeSpinsAwarded !== expectedFreeSpins) {
+            errors.push(
+                `${scatterCount} scatters should award ${expectedFreeSpins} free spins, got ${freeSpinsAwarded}`
+            );
+        } else if (expectedFreeSpins > 0) {
+            console.log(`✅ Free spin validation passed: ${scatterCount} scatters → ${expectedFreeSpins} free spins`);
         }
 
-        // Validate free spin board properties if free spins were awarded
-        if (freeSpinsAwarded > 0 && boardResult.freeSpinBoards) {
-            const boardStructureResult = this.validateFreeSpinBoardStructure(boardResult.freeSpinBoards);
-            errors.push(...boardStructureResult.errors);
-            warnings.push(...boardStructureResult.warnings);
-        }
+        // Note: Free spin board structure validation removed since free spin execution is disabled
 
         return {
             isValid: errors.length === 0,
@@ -208,7 +174,7 @@ export class ChainValidator {
             scatterCount,
             freeSpinsAwarded,
             expectedFreeSpins,
-            isRetrigger: isCurrentlyFreeSpin
+            isRetrigger: false
         };
     }
 
@@ -384,7 +350,7 @@ export class ChainValidator {
             }
             
             // Validate free spin awards
-            const freeSpinResult = this.validateFreeSpinAwards(board, board.isFreeSpin || false);
+            const freeSpinResult = this.validateFreeSpinAwards(board); // All boards are base game
             if (!freeSpinResult.isValid) {
                 totalFreeSpinValidationErrors++;
                 chainResult.errors.push(`Board ${index} free spin validation failed: ${freeSpinResult.errors.join(', ')}`);
