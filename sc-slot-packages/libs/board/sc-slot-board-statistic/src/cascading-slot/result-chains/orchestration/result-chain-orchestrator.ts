@@ -302,35 +302,15 @@ export class ResultChainOrchestrator {
            
         }
         
-        let freeSpinWins = 0;
-        let totalFreeSpinsPlayed = 0;
-        let freeSpinBoardSequence: any[] = [];
-
-        // Execute free spins if awarded (following guide requirements)
+        // Calculate free spin awards (but don't execute free spins)
         const scatterCount = this.countScatterSymbols(initialBoard.newBoard);
         const freeSpinsAwarded = calculateFreeSpinAward(scatterCount, false); // Base game award
-        
-        // 🎯 FIX: Execute free spins if awarded
-        if (freeSpinsAwarded > 0) {
-            console.log(`🎰 Executing ${freeSpinsAwarded} free spins awarded from ${scatterCount} scatters`);
-            const freeSpinResults = await this.executeFreeSpins(round, freeSpinsAwarded);
-            totalFreeSpinsPlayed = freeSpinResults.totalSpinsPlayed;
-            freeSpinWins = freeSpinResults.totalWins;
-            freeSpinBoardSequence = freeSpinResults.freeSpinBoards;
-            console.log(`✅ Free spins completed: ${totalFreeSpinsPlayed} spins played, ${freeSpinWins} total wins`);
-        }
-        
+
         // 🎯 UPDATED: Calculate board multiplier sum using accumulated values from tumbles (pure function)
         const boardMultiplierSum = ResultChainOrchestrator.calculateMultiplierSum(finalTumbleMultipliers);
-        const rawTumbleWin = totalWin + freeSpinWins; // Raw wins before multipliers
+        const rawTumbleWin = totalWin; // Raw wins before multipliers (exclude free spin wins)
 
-        // 🎯 SCATTER WIN REWARDS: Add scatter-based payouts if enabled
-        let scatterWinReward = 0;
-        if (this.engagementMechanics?.scatterWinRewards && scatterCount >= 4) {
-            scatterWinReward = this.calculateScatterWinReward(scatterCount, round.coinValue * round.betLevel * round.betMultiplier);
-        }
-
-        const finalTotalWin = boardMultiplierSum > 0 ? (rawTumbleWin + scatterWinReward) * boardMultiplierSum : (rawTumbleWin + scatterWinReward);
+        const finalTotalWin = boardMultiplierSum > 0 ? rawTumbleWin * boardMultiplierSum : rawTumbleWin;
         
         const boardResult = {
             board: initialBoard.newBoard,
@@ -340,16 +320,12 @@ export class ResultChainOrchestrator {
             totalCascadeWin: totalWin,
             isFreeSpin: round.freeSpin || false,
             accumulatedMultiplier: round.multiplier || 0,
-            remainingFreeSpins: 0,
-            freeSpinsPlayed: totalFreeSpinsPlayed,
-            freeSpinWins,
-            freeSpinBoards: freeSpinBoardSequence.length > 0 ? freeSpinBoardSequence : undefined,
             settlementResult: {
                 tumbles: tumbles,
                 freeSpins: { count: scatterCount, odds: freeSpinsAwarded },
                 additionalFreeSpins: { count: 0, odds: 0 }
             },
-            totalTumbleWin: rawTumbleWin,           // Raw tumble wins (base game + free spins)
+            totalTumbleWin: rawTumbleWin,           // Raw tumble wins
             boardMultiplierSum: boardMultiplierSum, // Sum of board multipliers
             totalWin: finalTotalWin,                // Final win with board multipliers applied
             // Include bet data for stake flexibility
@@ -361,7 +337,6 @@ export class ResultChainOrchestrator {
         
         // 🎯 VALIDATION: Ensure generated data follows guide patterns
         ChainValidator.validateTumblePatterns(tumbles, totalWin);
-        ChainValidator.validateFreeSpinAwards(boardResult, round.freeSpin || false);
         
         return boardResult;
     }
@@ -734,21 +709,24 @@ export class ResultChainOrchestrator {
     private detectWinningSymbols(board: number[]): number[] {
         // Count each symbol on the 30-position board (6x5 grid)
         const symbolCounts: { [symbol: number]: number } = {};
-        
+
         board.forEach(symbol => {
             if (symbol >= 0 && symbol <= 10) { // Normal symbols 0-10
                 symbolCounts[symbol] = (symbolCounts[symbol] || 0) + 1;
             }
         });
-        
-        // Return symbols with 8+ matches (business rule - cannot change)
+
+        // Return symbols with minimum required matches
         const winSymbols: number[] = [];
         Object.entries(symbolCounts).forEach(([symbol, count]) => {
-            if (count >= 8) { // Business rule: minimum 8 symbols for win
-                winSymbols.push(parseInt(symbol));
+            const symbolNum = parseInt(symbol);
+            // Regular symbols need 8+ for win, scatters (9) need 4+
+            const minCount = symbolNum === 9 ? 4 : 8;
+            if (count >= minCount) {
+                winSymbols.push(symbolNum);
             }
         });
-        
+
         return winSymbols;
     }
 
@@ -849,255 +827,8 @@ export class ResultChainOrchestrator {
         return icons;
     }
 
-    /**
-     * Execute free spins immediately and capture all individual boards for complete player experience
-     */
-    private async executeFreeSpins(
-        baseRound: Round, 
-        freeSpinsCount: number
-    ): Promise<{ 
-        totalWins: number; 
-        totalSpinsPlayed: number;
-        freeSpinBoards: Array<{
-            board: number[];
-            multipliers: number[];
-            isFreeSpin: boolean;  // Required property from guide
-            accumulatedMultiplier: number;  // Total accumulated multiplier
-            remainingFreeSpins: number;  // Free spins left after this round
-            freeSpinsPlayed: number;  // Number of free spins played so far
-            freeSpinWins: number;  // Number of winning free spin rounds
-            cascadeCount: number;
-            win: number;
-            isRetrigger: boolean;
-            retriggeredSpins?: number;
-            spinsRemaining: number;
-            spinIndex: number;
-            settlementResult?: any;
-        }>;
-    }> {
-        let totalWins = 0;
-        let totalSpinsPlayed = 0;
-        let additionalFreeSpins = 0;
-        let multiplier = 0;
-        const freeSpinBoards: Array<{
-            board: number[];
-            multipliers: number[];
-            isFreeSpin: boolean;  // Required property from guide
-            accumulatedMultiplier: number;  // Total accumulated multiplier
-            remainingFreeSpins: number;  // Free spins left after this round
-            freeSpinsPlayed: number;  // Number of free spins played so far
-            freeSpinWins: number;  // Number of winning free spin rounds
-            cascadeCount: number;
-            win: number;
-            isRetrigger: boolean;
-            retriggeredSpins?: number;
-            spinsRemaining: number;
-            spinIndex: number;
-            settlementResult?: any;
-        }> = [];
-
-        if (!this.roundCalculator) {
-            console.warn("⚠️  External calculator not available, using internal free spin simulation");
-            return this.simulateFreeSpins(baseRound, freeSpinsCount);
-        }
-
-        for (let j = 0; j < freeSpinsCount; j++) {
-            const spinIndex = totalSpinsPlayed + 1;
-            const spinsRemaining = freeSpinsCount - j - 1 + additionalFreeSpins;
-            
-            const freeSpinRound: Round = {
-                id: baseRound.id,
-                freeSpinId: j,
-                coinValue: baseRound.coinValue,
-                betLevel: baseRound.betLevel,
-                betMultiplier: baseRound.betMultiplier,
-                totalAmount: 0,
-                odds: baseRound.odds,
-                freeSpin: true,
-            };
-
-            // Generate a new board for this free spin
-            const freeSpinBoard = this.boardGeneratorFactory().generate();
-            
-            // Process the free spin with the generated board
-            this.roundCalculator.processSpinning(freeSpinRound, 0);
-
-            const win = freeSpinRound.betwin || 0;
-            
-            // Check for retrigger using correct logic
-            const freeSpinScatterCount = this.countScatterSymbols(freeSpinBoard.newBoard);
-            const retriggeredSpins = calculateFreeSpinAward(freeSpinScatterCount, true); // Retrigger mode
-            
-            // Count only actual cascades (tumbles where symbols were removed and board changed)
-            const cascadeCount = freeSpinRound.settlementResult?.tumbles?.filter(tumble => {
-                // Type-safe access to explodedSymbols
-                const explodedSymbols = (tumble as any).explodedSymbols;
-                // Check if symbols were actually exploded/removed
-                const symbolsExploded = explodedSymbols && 
-                    explodedSymbols.some((pos: number) => pos !== -1);
-                // Check if board actually changed
-                const boardChanged = tumble.originalBoard !== tumble.newBoard;
-                // Only count as cascade if both conditions are met
-                return symbolsExploded && boardChanged;
-            }).length || 0;
-
-            // Capture the complete free spin board data (following guide format)
-            freeSpinBoards.push({
-                board: freeSpinBoard.newBoard,
-                multipliers: freeSpinBoard.multipliers,
-                isFreeSpin: true,  // Required property from guide
-                accumulatedMultiplier: multiplier,  // Total accumulated multiplier
-                remainingFreeSpins: spinsRemaining,  // Free spins left after this round
-                freeSpinsPlayed: spinIndex,  // Number of free spins played so far
-                freeSpinWins: win > 0 ? 1 : 0,  // Number of winning free spin rounds
-                cascadeCount,
-                win,
-                isRetrigger: retriggeredSpins > 0,
-                retriggeredSpins: retriggeredSpins > 0 ? retriggeredSpins : undefined,
-                spinsRemaining,
-                spinIndex,
-                settlementResult: {
-                    ...freeSpinRound.settlementResult,
-                    freeSpins: {
-                        count: freeSpinScatterCount,
-                        odds: retriggeredSpins  // Free spins awarded (based on retrigger rules)
-                    }
-                }
-            });
-
-            if (win > 0) {
-                multiplier += freeSpinRound.multiplier || 0;
-                totalWins += win;
-            }
-
-            totalSpinsPlayed++;
-
-            // Check for additional free spins (retriggering)
-            additionalFreeSpins += retriggeredSpins;
-        }
-
-        // Handle retriggered free spins recursively
-        if (additionalFreeSpins > 0) {
-            console.log(`🔄 Retriggered ${additionalFreeSpins} additional free spins`);
-            const retriggeredResults = await this.executeFreeSpins(baseRound, additionalFreeSpins);
-            totalWins += retriggeredResults.totalWins;
-            totalSpinsPlayed += retriggeredResults.totalSpinsPlayed;
-            
-            // Append retriggered boards with updated spin indices
-            retriggeredResults.freeSpinBoards.forEach(board => {
-                freeSpinBoards.push({
-                    ...board,
-                    spinIndex: board.spinIndex + freeSpinBoards.length
-                });
-            });
-        }
-
-        return { totalWins, totalSpinsPlayed, freeSpinBoards };
-    }
 
 
-    /**
-     * Simulate free spins when external calculator is not available
-     */
-    private async simulateFreeSpins(
-        baseRound: Round,
-        freeSpinsCount: number
-    ): Promise<{
-        totalWins: number;
-        totalSpinsPlayed: number;
-        freeSpinBoards: Array<{
-            board: number[];
-            multipliers: number[];
-            isFreeSpin: boolean;
-            accumulatedMultiplier: number;
-            remainingFreeSpins: number;
-            freeSpinsPlayed: number;
-            freeSpinWins: number;
-            cascadeCount: number;
-            win: number;
-            isRetrigger: boolean;
-            retriggeredSpins?: number;
-            spinsRemaining: number;
-            spinIndex: number;
-            settlementResult?: any;
-        }>;
-    }> {
-        console.log(`🎰 Simulating ${freeSpinsCount} free spins internally`);
-        
-        const freeSpinBoards: any[] = [];
-        let totalWins = 0;
-        let totalSpinsPlayed = 0;
-        let accumulatedMultiplier = 0;
-        let additionalFreeSpins = 0;
-
-        for (let i = 0; i < freeSpinsCount; i++) {
-            const spinIndex = totalSpinsPlayed + 1;
-            const spinsRemaining = freeSpinsCount - i - 1 + additionalFreeSpins;
-            
-            // Generate a free spin board
-            const boardGenerator = this.boardGeneratorFactory();
-            const freeSpinBoard = boardGenerator.generate();
-            
-            // Process the board for wins
-            const totalBetAmount = baseRound.totalAmount || 1;
-            const baseBetAmount = totalBetAmount / 20; // Assuming standard 20x multiplier
-            const tumbleResult = await this.processTumblesWithBoardGenerator(
-                freeSpinBoard.newBoard,
-                freeSpinBoard.multipliers,
-                totalBetAmount,
-                baseBetAmount
-            );
-            
-            const win = tumbleResult.totalWin;
-            totalWins += win;
-            totalSpinsPlayed++;
-            
-            // Check for retriggers
-            const scatterCount = this.countScatterSymbols(freeSpinBoard.newBoard);
-            const retriggeredSpins = calculateFreeSpinAward(scatterCount, true); // Retrigger mode
-            additionalFreeSpins += retriggeredSpins;
-            
-            // Update multiplier (simplified)
-            if (win > 0) {
-                accumulatedMultiplier += Math.floor(Math.random() * 10) + 5; // Random multiplier increase
-            }
-            
-            freeSpinBoards.push({
-                board: freeSpinBoard.newBoard,
-                multipliers: freeSpinBoard.multipliers,
-                isFreeSpin: true,
-                accumulatedMultiplier,
-                remainingFreeSpins: spinsRemaining,
-                freeSpinsPlayed: spinIndex,
-                freeSpinWins: win > 0 ? 1 : 0,
-                cascadeCount: tumbleResult.tumbles.length,
-                win,
-                isRetrigger: retriggeredSpins > 0,
-                retriggeredSpins: retriggeredSpins > 0 ? retriggeredSpins : undefined,
-                spinsRemaining,
-                spinIndex,
-                settlementResult: {
-                    tumbles: tumbleResult.tumbles,
-                    freeSpins: {
-                        count: scatterCount,
-                        odds: retriggeredSpins
-                    }
-                }
-            });
-        }
-        
-        // Handle additional free spins from retriggers
-        if (additionalFreeSpins > 0) {
-            console.log(`🔄 Processing ${additionalFreeSpins} retriggered free spins`);
-            const retriggeredResults = await this.simulateFreeSpins(baseRound, additionalFreeSpins);
-            totalWins += retriggeredResults.totalWins;
-            totalSpinsPlayed += retriggeredResults.totalSpinsPlayed;
-            freeSpinBoards.push(...retriggeredResults.freeSpinBoards);
-        }
-        
-        console.log(`✅ Free spin simulation complete: ${totalSpinsPlayed} spins, ${totalWins} total wins`);
-        return Promise.resolve({ totalWins, totalSpinsPlayed, freeSpinBoards });
-    }
 
 
     /**

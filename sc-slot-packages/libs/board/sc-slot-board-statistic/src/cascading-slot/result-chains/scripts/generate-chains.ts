@@ -286,12 +286,8 @@ async function main() {
                                 multipliers: board.multipliers,
                                 isFreeSpin: board.isFreeSpin,
                                 accumulatedMultiplier: board.accumulatedMultiplier,
-                                remainingFreeSpins: board.remainingFreeSpins,
-                                freeSpinsPlayed: board.freeSpinsPlayed,
-                                freeSpinWins: board.freeSpinWins,
-                                freeSpinBoards: board.freeSpinBoards,
                                 settlementResult: board.settlementResult,
-                                totalTumbleWin: board.totalTumbleWin || 0,        // Raw tumble wins (base + free spins)
+                                totalTumbleWin: board.totalTumbleWin || 0,        // Raw tumble wins
                                 boardMultiplierSum: board.boardMultiplierSum || 0, // Sum of board multipliers
                                 totalWin: board.totalWin || board.totalTumbleWin || 0, // Final win with multipliers applied
                                 // Additional fields for debugging multiplier effects
