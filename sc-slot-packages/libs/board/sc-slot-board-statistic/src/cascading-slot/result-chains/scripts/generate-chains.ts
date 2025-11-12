@@ -127,13 +127,24 @@ function findBetConfigForAmount(baseBetAmount: number): BetConfiguration {
         }
     }
     
-    // Fallback: create a reasonable approximation
-    // Find the closest bet level for coinValue = 1
-    const closestBetLevel = BET_LEVELS.reduce((prev, curr) => 
-        Math.abs(curr - baseBetAmount) < Math.abs(prev - baseBetAmount) ? curr : prev
+    // Fallback: Calculate the correct coinValue to achieve the target baseBetAmount
+    // Strategy: Use betLevel = baseBetAmount, coinValue = 1
+    // This ensures: betLevel × coinValue = baseBetAmount × 1 = baseBetAmount
+
+    // Validate that the calculated betLevel is reasonable
+    if (baseBetAmount < 0.01 || baseBetAmount > 100) {
+        throw new Error(
+            `Cannot create valid bet config for baseBetAmount ${baseBetAmount}. ` +
+            `BaseBetAmount must be between 0.01 and 100.`
+        );
+    }
+
+    console.warn(
+        `⚠️  No exact match found in BET_LEVELS × COIN_VALUES for baseBetAmount ${baseBetAmount}. ` +
+        `Using fallback: betLevel=${baseBetAmount}, coinValue=1`
     );
-    
-    return { betLevel: closestBetLevel, coinValue: 1 };
+
+    return { betLevel: baseBetAmount, coinValue: 1 };
 }
 
 async function main() {
@@ -225,7 +236,20 @@ async function main() {
                     try {
                         // Find a valid bet level/coin value combination for this base bet amount
                         const validConfig = findBetConfigForAmount(baseBetAmount);
-                        
+
+                        // ✅ VALIDATION: Ensure validConfig produces the expected baseBetAmount
+                        const validatedBaseBetAmount = validConfig.betLevel * validConfig.coinValue;
+                        const difference = Math.abs(validatedBaseBetAmount - baseBetAmount);
+
+                        if (difference > 0.001) {
+                            throw new Error(
+                                `Bet config validation failed for chain ${chainName}: ` +
+                                `Expected baseBetAmount ${baseBetAmount}, ` +
+                                `but betLevel ${validConfig.betLevel} × coinValue ${validConfig.coinValue} = ${validatedBaseBetAmount}. ` +
+                                `Difference: ${difference}`
+                            );
+                        }
+
                         // Create config with current bet amount
                         const currentConfig = {
                             ...config,
@@ -233,7 +257,7 @@ async function main() {
                             coinValue: validConfig.coinValue,
                             volatility: effectiveVolatility  // Pass effective volatility
                         };
-                        
+
                         const chainResult = await generateChain(pattern, boardCount, currentConfig);
                     
                     if (chainResult.success) {
@@ -242,13 +266,16 @@ async function main() {
                         const filePath = join(config.outputDir, filename);
                         
                         const actualRTP = chainResult.actualRTP || 0;
-                        // Create bet data from current base bet amount
-                        const totalBetAmount = baseBetAmount * commonDefinition.betSettings.defaultBetMultiplier;
+
+                        // ✅ Use validated baseBetAmount to ensure consistency
+                        const validatedBaseBetAmountForSave = validConfig.betLevel * validConfig.coinValue;
+                        const totalBetAmount = validatedBaseBetAmountForSave * commonDefinition.betSettings.defaultBetMultiplier;
+
                         const betData = {
                             betLevel: validConfig.betLevel,
                             coinValue: validConfig.coinValue,
                             betMultiplier: commonDefinition.betSettings.defaultBetMultiplier,
-                            baseBetAmount: baseBetAmount,
+                            baseBetAmount: validatedBaseBetAmountForSave,  // ✅ Use validated value
                             totalBetAmount: totalBetAmount
                         };
 
