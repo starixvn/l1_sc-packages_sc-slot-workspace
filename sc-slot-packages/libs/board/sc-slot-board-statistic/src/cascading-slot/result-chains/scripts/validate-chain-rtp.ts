@@ -4,6 +4,17 @@
  * RTP Validation Script for Result Chains
  * Validates that generated chains achieve their target RTP
  * Formula: RTP = (totalTumbleWin + totalHouseExpenditure) / totalBets
+ *
+ * Usage:
+ *   npm run validate-rtp                          - Validates all chains in ./chain-output
+ *   npm run validate-rtp <directory>              - Validates all chains in specified directory
+ *   npm run validate-rtp <chain-file.json>        - Validates a single chain file
+ *
+ * Features:
+ *   - Scans directory for chain files (ignores generation-summary files and subdirectories)
+ *   - Generates summary report with pattern breakdown
+ *   - Saves detailed validation results to JSON
+ *   - Exit code 0 if all chains pass, 1 if any fail
  */
 
 import * as fs from 'fs';
@@ -245,42 +256,216 @@ Total Wagered: $${result.totalBets.toFixed(2)}
 }
 
 /**
+ * Get all chain files from chain-output directory
+ * Ignores generation-summary files and subdirectories
+ */
+function getChainFiles(chainOutputDir: string): string[] {
+    if (!fs.existsSync(chainOutputDir)) {
+        console.log(`❌ Error: Chain output directory not found: ${chainOutputDir}`);
+        return [];
+    }
+
+    const files = fs.readdirSync(chainOutputDir);
+    const chainFiles: string[] = [];
+
+    for (const file of files) {
+        const filePath = path.join(chainOutputDir, file);
+        const stats = fs.statSync(filePath);
+
+        // Skip directories
+        if (stats.isDirectory()) {
+            continue;
+        }
+
+        // Skip generation-summary files
+        if (file.startsWith('generation-summary-')) {
+            continue;
+        }
+
+        // Only include .json files
+        if (file.endsWith('.json')) {
+            chainFiles.push(filePath);
+        }
+    }
+
+    return chainFiles.sort(); // Sort alphabetically for consistent ordering
+}
+
+/**
+ * Generate summary report for multiple chains
+ */
+function generateSummaryReport(results: RTPValidationResult[]): string {
+    const totalChains = results.length;
+    const passedChains = results.filter(r => r.meetsTarget).length;
+    const failedChains = totalChains - passedChains;
+    const passRate = (passedChains / totalChains) * 100;
+
+    const avgRTP = results.reduce((sum, r) => sum + r.calculatedRTP, 0) / totalChains;
+    const avgVariance = results.reduce((sum, r) => sum + Math.abs(r.rtpVariance), 0) / totalChains;
+    const avgHitFrequency = results.reduce((sum, r) => sum + r.hitFrequency, 0) / totalChains;
+
+    // Group by pattern type
+    const patternGroups: { [pattern: string]: RTPValidationResult[] } = {};
+    results.forEach(r => {
+        const pattern = r.metadata.patternType;
+        if (!patternGroups[pattern]) {
+            patternGroups[pattern] = [];
+        }
+        patternGroups[pattern].push(r);
+    });
+
+    let report = `
+╔═══════════════════════════════════════════════════════════════╗
+║           CHAIN RTP VALIDATION SUMMARY REPORT                  ║
+╚═══════════════════════════════════════════════════════════════╝
+
+📊 OVERALL STATISTICS
+---------------------
+Total Chains: ${totalChains}
+Passed: ${passedChains} (${passRate.toFixed(1)}%)
+Failed: ${failedChains} (${((failedChains / totalChains) * 100).toFixed(1)}%)
+
+Average RTP: ${(avgRTP * 100).toFixed(2)}%
+Average Variance: ${(avgVariance * 100).toFixed(2)}%
+Average Hit Frequency: ${(avgHitFrequency * 100).toFixed(1)}%
+
+`;
+
+    // Pattern breakdown
+    report += `🎭 PATTERN BREAKDOWN
+--------------------
+`;
+    for (const [pattern, patternResults] of Object.entries(patternGroups)) {
+        const patternPassed = patternResults.filter(r => r.meetsTarget).length;
+        const patternTotal = patternResults.length;
+        const patternPassRate = (patternPassed / patternTotal) * 100;
+        const patternAvgRTP = patternResults.reduce((sum, r) => sum + r.calculatedRTP, 0) / patternTotal;
+
+        report += `  ${pattern.padEnd(15)} ${patternPassed}/${patternTotal} (${patternPassRate.toFixed(1)}%) - Avg RTP: ${(patternAvgRTP * 100).toFixed(2)}%\n`;
+    }
+
+    // Failed chains detail
+    const failedResults = results.filter(r => !r.meetsTarget);
+    if (failedResults.length > 0) {
+        report += `
+❌ FAILED CHAINS (${failedResults.length})
+--------------------
+`;
+        failedResults.forEach(r => {
+            report += `  ${r.chainName}\n`;
+            report += `    Target: ${(r.metadata.targetRTP * 100).toFixed(2)}%, Actual: ${(r.calculatedRTP * 100).toFixed(2)}%, Variance: ${(r.rtpVariance * 100).toFixed(2)}%\n`;
+        });
+    }
+
+    return report;
+}
+
+/**
  * Main validation function
  */
 function main() {
     const args = process.argv.slice(2);
 
-    if (args.length === 0) {
-        console.log('❌ Error: Please provide a chain file path');
-        console.log('Usage: npm run validate-rtp <chain-file.json>');
+    // If a specific file is provided, validate just that file
+    if (args.length > 0 && args[0].endsWith('.json')) {
+        const chainFile = args[0];
+
+        if (!fs.existsSync(chainFile)) {
+            console.log(`❌ Error: Chain file not found: ${chainFile}`);
+            process.exit(1);
+        }
+
+        console.log('🔍 Validating Single Chain RTP...');
+        console.log(`📄 File: ${chainFile}\n`);
+
+        const validationResult = validateChainRTP(chainFile);
+
+        if (!validationResult) {
+            console.log('❌ Failed to validate chain RTP');
+            process.exit(1);
+        }
+
+        console.log(formatRTPValidationResult(validationResult));
+
+        // Exit with appropriate code
+        if (validationResult.meetsTarget) {
+            console.log('✅ RTP validation PASSED');
+            process.exit(0);
+        } else {
+            console.log('❌ RTP validation FAILED');
+            process.exit(1);
+        }
+    }
+
+    // Otherwise, scan chain-output directory
+    const chainOutputDir = args[0] || './chain-output';
+
+    console.log('🔍 Scanning Chain Output Directory...');
+    console.log(`📁 Directory: ${chainOutputDir}\n`);
+
+    const chainFiles = getChainFiles(chainOutputDir);
+
+    if (chainFiles.length === 0) {
+        console.log('❌ No chain files found in directory');
+        console.log('💡 Make sure you have generated chains using: npm run generate-chains');
         process.exit(1);
     }
 
-    const chainFile = args[0];
+    console.log(`📊 Found ${chainFiles.length} chain files\n`);
 
-    if (!fs.existsSync(chainFile)) {
-        console.log(`❌ Error: Chain file not found: ${chainFile}`);
-        process.exit(1);
+    // Validate all chains
+    const results: RTPValidationResult[] = [];
+    let validatedCount = 0;
+    let failedCount = 0;
+
+    for (const chainFile of chainFiles) {
+        const fileName = path.basename(chainFile);
+        process.stdout.write(`Validating ${fileName}... `);
+
+        const validationResult = validateChainRTP(chainFile);
+
+        if (validationResult) {
+            results.push(validationResult);
+            validatedCount++;
+
+            if (validationResult.meetsTarget) {
+                console.log('✅ PASS');
+            } else {
+                console.log(`❌ FAIL (RTP: ${(validationResult.calculatedRTP * 100).toFixed(2)}%)`);
+                failedCount++;
+            }
+        } else {
+            console.log('❌ ERROR');
+            failedCount++;
+        }
     }
 
-    console.log('🔍 Validating Chain RTP...');
-    console.log(`📄 File: ${chainFile}\n`);
+    console.log('');
 
-    const validationResult = validateChainRTP(chainFile);
+    // Generate summary report
+    if (results.length > 0) {
+        console.log(generateSummaryReport(results));
 
-    if (!validationResult) {
-        console.log('❌ Failed to validate chain RTP');
-        process.exit(1);
+        // Save detailed results to JSON
+        const summaryPath = path.join(chainOutputDir, `rtp-validation-summary-${Date.now()}.json`);
+        const summaryData = {
+            timestamp: new Date().toISOString(),
+            totalChains: results.length,
+            passedChains: results.filter(r => r.meetsTarget).length,
+            failedChains: results.filter(r => !r.meetsTarget).length,
+            results: results
+        };
+
+        fs.writeFileSync(summaryPath, JSON.stringify(summaryData, null, 2));
+        console.log(`💾 Detailed results saved to: ${summaryPath}\n`);
     }
-
-    console.log(formatRTPValidationResult(validationResult));
 
     // Exit with appropriate code
-    if (validationResult.meetsTarget) {
-        console.log('✅ RTP validation PASSED');
+    if (failedCount === 0) {
+        console.log('✅ ALL CHAINS PASSED RTP VALIDATION');
         process.exit(0);
     } else {
-        console.log('❌ RTP validation FAILED');
+        console.log(`❌ ${failedCount} CHAINS FAILED RTP VALIDATION`);
         process.exit(1);
     }
 }
