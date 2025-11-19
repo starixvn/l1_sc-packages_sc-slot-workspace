@@ -18,6 +18,7 @@
     "verify-chain-multipliers": "node --experimental-specifier-resolution=node --loader ts-node/esm src/cascading-slot/result-chains/scripts/verify-chain-multipliers.ts",
     "analyze-chain-symbols": "node --experimental-specifier-resolution=node --loader ts-node/esm src/cascading-slot/result-chains/scripts/analyze-chain-symbols.ts",
     "validate-rtp": "node --experimental-specifier-resolution=node --loader ts-node/esm src/cascading-slot/result-chains/scripts/validate-chain-rtp.ts",
+    "validate-db-chains": "node --experimental-specifier-resolution=node --loader ts-node/esm src/cascading-slot/result-chains/scripts/validate-db-chains.ts",
     "lint": "eslint src/**/*.ts",
     "lint:fix": "eslint src/**/*.ts --fix",
     "clean": "rimraf dist",
