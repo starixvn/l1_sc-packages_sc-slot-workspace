@@ -20,6 +20,7 @@
     "validate-rtp": "node --experimental-specifier-resolution=node --loader ts-node/esm src/cascading-slot/result-chains/scripts/validate-chain-rtp.ts",
     "validate-db-chains": "node --experimental-specifier-resolution=node --loader ts-node/esm src/cascading-slot/result-chains/scripts/validate-db-chains.ts",
     "delete-high-rtp-chains": "node --experimental-specifier-resolution=node --loader ts-node/esm src/cascading-slot/result-chains/scripts/delete-high-rtp-chains.ts",
+    "detect-outdated-freespins": "node --experimental-specifier-resolution=node --loader ts-node/esm src/cascading-slot/result-chains/scripts/detect-outdated-freespins.ts",
     "lint": "eslint src/**/*.ts",
     "lint:fix": "eslint src/**/*.ts --fix",
     "clean": "rimraf dist",

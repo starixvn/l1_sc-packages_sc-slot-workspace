@@ -244,7 +244,8 @@ function printSummary(summary: ValidationSummary, config: ValidationConfig): voi
             console.log(`   RTP: ${(chain.calculatedRTP * 100).toFixed(2)}% | Target: ${(chain.targetRTP * 100).toFixed(2)}%`);
             console.log(`   Variance: +${(chain.rtpVariance * 100).toFixed(2)}%`);
             console.log(`   Bet: Level=${chain.betLevel}, Coin=${chain.coinValue}, Base=${chain.baseBetAmount.toFixed(2)}`);
-            console.log(`   Stats: ${chain.boardCount} boards, ${chain.freeSpinTriggers} free spin triggers`);
+            console.log(`   Stats: ${chain.boardCount} boards, ${chain.freeSpinTriggers} free spin triggers, ${chain.totalFreeSpinsAwarded} total free spins`);
+            console.log(`   Win Details: totalWin=${chain.totalWin.toFixed(2)}, freeSpinCost=${chain.totalHouseExpenditure.toFixed(2)}, totalBets=${chain.totalBets.toFixed(2)}`);
             console.log('');
         });
     } else {
@@ -350,10 +351,8 @@ async function main() {
         // Initialize repository
         const chainRepository = new ResultChainRepository();
 
-        // Build filter
-        const filter: any = {
-            inactive: false // Only validate active chains
-        };
+        // Build filter - query ALL chains by default (including old ones without patternType/volatility)
+        const filter: any = {};
         if (config.patternType) filter.patternType = config.patternType;
         if (config.volatility) filter.volatility = config.volatility;
 
