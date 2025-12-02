@@ -23,6 +23,8 @@
     "detect-outdated-freespins": "node --experimental-specifier-resolution=node --loader ts-node/esm src/cascading-slot/result-chains/scripts/detect-outdated-freespins.ts",
     "detect-wrong-freespin-count": "node --experimental-specifier-resolution=node --loader ts-node/esm src/cascading-slot/result-chains/scripts/detect-wrong-freespin-count.ts",
     "revalidate-freespin-chains": "node --experimental-specifier-resolution=node --loader ts-node/esm src/cascading-slot/result-chains/scripts/revalidate-freespin-chains.ts",
+    "regenerate-high-rtp-chains": "node --experimental-specifier-resolution=node --loader ts-node/esm src/cascading-slot/result-chains/scripts/regenerate-high-rtp-chains.ts",
+    "delete-corrected-high-rtp-chains": "node --experimental-specifier-resolution=node --loader ts-node/esm src/cascading-slot/result-chains/scripts/delete-corrected-high-rtp-chains.ts",
     "lint": "eslint src/**/*.ts",
     "lint:fix": "eslint src/**/*.ts --fix",
     "clean": "rimraf dist",

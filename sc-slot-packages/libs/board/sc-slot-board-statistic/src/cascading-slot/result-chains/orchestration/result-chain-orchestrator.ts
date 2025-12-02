@@ -303,7 +303,9 @@ export class ResultChainOrchestrator {
         }
         
         // Calculate free spin awards (but don't execute free spins)
-        const scatterCount = this.countScatterSymbols(initialBoard.newBoard);
+        // 🎯 FIX: Check ALL tumbles for scatter symbols, not just initial board
+        // Scatters can appear during cascading tumbles, not just the first spin
+        const scatterCount = this.countMaxScatterSymbolsFromTumbles(tumbles);
         const freeSpinsAwarded = calculateFreeSpinAward(scatterCount, false); // Base game award
 
         // 🎯 UPDATED: Calculate board multiplier sum using accumulated values from tumbles (pure function)
@@ -793,6 +795,41 @@ export class ResultChainOrchestrator {
      */
     private countScatterSymbols(board: number[]): number {
         return board.filter(symbol => symbol === 9).length;
+    }
+
+    /**
+     * Count max scatter symbols (symbol 9) from ALL tumbles
+     * Scatters can appear in ANY tumble during cascading, not just the first
+     * This is critical for correct free spin triggering
+     */
+    private countMaxScatterSymbolsFromTumbles(tumbles: any[]): number {
+        if (!tumbles || tumbles.length === 0) {
+            return 0;
+        }
+
+        let maxScatterCount = 0;
+
+        for (const tumble of tumbles) {
+            const boardString = tumble.newBoard || tumble.originalBoard;
+            if (!boardString) continue;
+
+            // Parse board - can be comma-separated string or already an array
+            let board: number[];
+            if (typeof boardString === 'string') {
+                board = boardString.split(',').map((s: string) => parseInt(s.trim(), 10));
+            } else if (Array.isArray(boardString)) {
+                board = boardString;
+            } else {
+                continue;
+            }
+
+            const scatterCount = board.filter(symbol => symbol === 9).length;
+            if (scatterCount > maxScatterCount) {
+                maxScatterCount = scatterCount;
+            }
+        }
+
+        return maxScatterCount;
     }
 
 
